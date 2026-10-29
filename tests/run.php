@@ -41,6 +41,9 @@ check(Protocol::command('Power', false) === ['poweron' => false], 'off uses powe
 $devices = Protocol::devices(['list' => [device(), ['model' => 'DR-UNKNOWN', 'sn' => 'unknown']],
     'familyRooms' => [['devices' => [device(), device('another')]]]]);
 check(count($devices) === 2, 'nested family discovery deduplicates and filters models');
+$stats = Protocol::discoveryStats(['list' => [device(), ['model' => Protocol::MODEL], ['model' => 'unknown', 'sn' => 'private-value']]]);
+check($stats['supportedRecords'] === 2 && $stats['supportedUsable'] === 1 && $stats['supportedMissingSerial'] === 1, 'discovery diagnostics distinguish model detection from usable serial');
+check(!str_contains(json_encode($stats), 'private-value') && !str_contains(json_encode($stats), 'fixture-720S'), 'discovery statistics do not expose serial numbers');
 check(Protocol::unwrap(['mixed' => ['poweron' => ['state' => false], 'temperature' => ['state' => 70]]]) === ['poweron' => false, 'temperature' => 70], 'false and numeric state unwrapped');
 fails(fn() => Protocol::unwrap(['mixed' => 'wrong']), 'unexpected state shape blocked');
 check(!Protocol::matches(['poweron' => false], ['poweron' => true]), 'wrong power is not confirmation');
@@ -63,6 +66,10 @@ check(!in_array('Authorization: Bearer fixture-token', $requests[1]['headers'], 
 check(count($client->discover()) === 1, 'discovery works with authenticated client');
 check(in_array('Authorization: Bearer fixture-token', $requests[2]['headers'], true), 'authenticated request has bearer header');
 check(str_contains($requests[2]['url'], '/family/room/devices'), 'EU workaround is first route');
+$diag = $client->diagnostics();
+check($diag['requests'][2]['httpStatus'] === 200 && $diag['requests'][2]['apiCode'] === 0, 'HTTP and API status retained for diagnostics');
+check($diag['discovery'][0]['counts']['supportedUsable'] === 1, 'discovery counts retained for diagnostics');
+check(!str_contains(json_encode($diag), 'fixture-token') && !str_contains(json_encode($diag), 'fixture@example.invalid'), 'request diagnostics contain neither bearer token nor account');
 
 $pages = [];
 $client = new Client('EU', 'fixture-token', static function ($url) use (&$pages): array {
@@ -109,6 +116,7 @@ class FakeClient extends Client
     public array $sent = [], $devices, $stateData;
     public ?Throwable $failure = null;
     public ?Throwable $sendFailure = null;
+    public ?Throwable $discoverFailure = null;
     public bool $applyCommand = false;
     public int $logins = 0, $reads = 0;
     public function __construct() {
@@ -118,7 +126,7 @@ class FakeClient extends Client
     }
     public function login(string $email, string $password): void { ++$this->logins; }
     public function session(): array { return ['region' => 'EU', 'token' => 'fixture-token']; }
-    public function discover(): array { return $this->devices; }
+    public function discover(): array { if ($this->discoverFailure !== null) { throw $this->discoverFailure; } return $this->devices; }
     public function state(string $serial): array { ++$this->reads; if ($this->failure !== null) { $e = $this->failure; $this->failure = null; throw $e; } return $this->stateData; }
     public function send(string $serial, array $params): string { $this->sent[] = $params; if ($this->sendFailure !== null) { $e = $this->sendFailure; $this->sendFailure = null; throw $e; } if ($this->applyCommand) { $this->stateData = array_merge($this->stateData, $params); } return 'control-reply'; }
 }
@@ -136,6 +144,24 @@ function heater(): TestHeater {
 }
 $h = new TestHeater(); $h->ApplyChanges();
 check($h->status === 104 && $h->timers['Refresh'] === 0, 'disabled instance does not poll');
+$setup = heater(); $setup->properties['Serial'] = ''; $setup->ApplyChanges();
+check($setup->status === 201 && $setup->values['LastError'] === '', 'first setup does not report missing device as invalid credentials/configuration');
+check($setup->timers['Refresh'] === 0 && !$setup->actions['Power'], 'first setup has no background error loop or active controls');
+check($setup->DiscoverDevices(), 'search works with no selected device');
+$setupForm = json_decode($setup->GetConfigurationForm(), true);
+$select = array_values(array_filter($setupForm['elements'], fn($x) => ($x['name'] ?? '') === 'Serial'))[0];
+$feedback = array_values(array_filter($setupForm['elements'], fn($x) => ($x['name'] ?? '') === 'Feedback'))[0];
+check(count($select['options']) === 2, 'found device options survive form reopen');
+check(str_contains($feedback['caption'], '1 Gerät(e) gefunden'), 'search result is visible near device selection after reopen');
+check(!$setup->Refresh() && $setup->fake->reads === 0 && $setup->values['LastError'] === '', 'refresh before selection is harmless and does not query state');
+$setup->fake->devices = []; $setup->DiscoverDevices();
+check(str_contains($setup->buffers['SearchFeedback'], 'Anmeldung erfolgreich'), 'empty device list is distinguished from failed authentication');
+$setup->fake->discoverFailure = new ApiException('Dreo antwortet mit HTTP 403.', 403); $setup->DiscoverDevices();
+check(str_contains($setup->buffers['SearchFeedback'], 'Fehler: Dreo antwortet mit HTTP 403.'), 'discovery errors shown directly in form');
+check($setup->timers['Refresh'] === 0, 'failed discovery before selection does not start automatic retries');
+$setupForm = json_decode($setup->GetConfigurationForm(), true);
+$feedback = array_values(array_filter($setupForm['elements'], fn($x) => ($x['name'] ?? '') === 'Feedback'))[0];
+check(str_contains($feedback['caption'], 'HTTP 403'), 'discovery error survives form reopen');
 $h = heater();
 check(!$h->values['StateValid'] && !$h->actions['Power'], 'controls disabled before first valid state');
 check($h->Refresh() && $h->values['CurrentTemperature'] === 21.1, 'module displays Celsius from real protocol values');

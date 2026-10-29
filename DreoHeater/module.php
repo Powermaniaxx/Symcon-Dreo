@@ -53,8 +53,14 @@ class DreoHeater extends IPSModuleStrict
         $this->SetValue('Availability', 'Noch keine aktuelle Statusabfrage');
         $this->actions(false);
         if (!$this->ReadPropertyBoolean('Open')) { $this->SetStatus(104); return; }
-        try { $this->configuration(true); }
-        catch (Throwable $e) { $this->SetValue('LastError', $e->getMessage()); $this->SetStatus(200); return; }
+        try { $this->configuration(false); }
+        catch (Throwable $e) { $this->SetValue('LastError', $e->getMessage()); $this->feedback($e->getMessage()); $this->SetStatus(200); return; }
+        $this->SetValue('LastError', '');
+        if ($this->ReadPropertyString('Serial') === '') {
+            $this->feedback('Zugangsdaten gespeichert. Jetzt Geräte suchen und danach ein Gerät auswählen.');
+            $this->SetStatus(201);
+            return;
+        }
         $this->SetSummary('Dreo 720S · ' . $this->ReadPropertyString('Region'));
         if (IPS_GetKernelRunlevel() === KR_READY) { $this->SetTimerInterval('Refresh', 1000); }
         $this->SetStatus(101);
@@ -70,6 +76,9 @@ class DreoHeater extends IPSModuleStrict
         $form = json_decode(file_get_contents(__DIR__ . '/form.json'), true, 64, JSON_THROW_ON_ERROR);
         foreach ($form['elements'] as &$element) {
             if (($element['name'] ?? '') === 'Serial') { $element['options'] = $this->deviceOptions(); }
+            if (($element['name'] ?? '') === 'Feedback' && $this->GetBuffer('SearchFeedback') !== '') {
+                $element['caption'] = $this->GetBuffer('SearchFeedback');
+            }
         }
         unset($element);
         return json_encode($form, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
@@ -79,13 +88,16 @@ class DreoHeater extends IPSModuleStrict
     {
         return $this->guard(function (): bool {
             $this->configuration(false);
-            $devices = $this->authenticated(fn(Client $client): array => $client->discover());
+            $this->feedback('Anmeldung und Gerätesuche laufen …');
+            $devices = $this->discoverWithDiagnostics();
             $this->WriteAttributeString('Devices', json_encode($devices, JSON_THROW_ON_ERROR));
             $this->SetBuffer('VerifiedSerial', '');
             $this->UpdateFormField('Serial', 'options', json_encode($this->deviceOptions(), JSON_THROW_ON_ERROR));
-            $this->UpdateFormField('Feedback', 'caption', $devices === []
-                ? 'Kein unterstützter 720S gefunden. Konto und Region prüfen. Andere Modelle werden noch nicht unterstützt.'
+            $this->SetValue('LastError', '');
+            $this->feedback($devices === []
+                ? 'Anmeldung erfolgreich, aber keine verwendbaren 720S-Geräte geliefert. Unter „Diagnose anzeigen“ stehen die Abfrageergebnisse ohne Zugangsdaten.'
                 : count($devices) . ' Gerät(e) gefunden. Gerät auswählen und Änderungen übernehmen.');
+            if ($this->ReadPropertyBoolean('Open') && $this->ReadPropertyString('Serial') === '') { $this->SetStatus(201); }
             return true;
         });
     }
@@ -93,6 +105,11 @@ class DreoHeater extends IPSModuleStrict
     public function Refresh(): bool
     {
         if (!$this->ReadPropertyBoolean('Open')) { return false; }
+        if ($this->ReadPropertyString('Serial') === '') {
+            $this->SetTimerInterval('Refresh', 0);
+            $this->SetStatus(201);
+            return false;
+        }
         return $this->guard(function (): bool {
             $this->configuration(true);
             $this->verifySelectedDevice();
@@ -146,10 +163,14 @@ class DreoHeater extends IPSModuleStrict
     public function GetDiagnostics(): string
     {
         // Deliberate allowlist: no account name, serial, password, bearer token or raw API data.
-        return json_encode(['module' => 'SymconDreo', 'version' => '0.1.0-beta.1', 'model' => Protocol::MODEL,
+        return json_encode(['module' => 'SymconDreo', 'version' => '0.1.0-beta.2', 'model' => Protocol::MODEL,
             'region' => $this->ReadPropertyString('Region'), 'active' => $this->ReadPropertyBoolean('Open'),
             'stateValid' => $this->GetValue('StateValid'), 'lastUpdateUtc' => $this->GetValue('LastUpdate'),
-            'lastError' => $this->GetValue('LastError'), 'stateKeys' => array_keys(json_decode($this->GetBuffer('State'), true) ?? [])],
+            'lastError' => $this->GetValue('LastError'),
+            'discovery' => json_decode($this->GetBuffer('DiscoveryDiagnostics'), true) ?? [],
+            'lastRequests' => json_decode($this->GetBuffer('RequestDiagnostics'), true) ?? [],
+            'serverRegion' => (json_decode($this->GetBuffer('Session'), true) ?? [])['region'] ?? null,
+            'stateKeys' => array_keys(json_decode($this->GetBuffer('State'), true) ?? [])],
             JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
     }
 
@@ -162,22 +183,34 @@ class DreoHeater extends IPSModuleStrict
     {
         $session = json_decode($this->GetBuffer('Session'), true) ?? [];
         $client = $this->newClient($session['region'] ?? $this->ReadPropertyString('Region'), $session['token'] ?? '');
-        if (empty($session['token'])) { $client->login(trim($this->ReadPropertyString('Email')), $this->ReadPropertyString('Password')); }
         try {
+            if (empty($session['token'])) { $client->login(trim($this->ReadPropertyString('Email')), $this->ReadPropertyString('Password')); }
             try { return $operation($client); }
             catch (ApiException $e) {
                 if ($e->getCode() !== 401 && $e->getCode() !== 403) { throw $e; }
                 $client->login(trim($this->ReadPropertyString('Email')), $this->ReadPropertyString('Password'));
                 return $operation($client);
             }
-        } finally { $this->SetBuffer('Session', json_encode($client->session(), JSON_THROW_ON_ERROR)); }
+        } finally {
+            $this->SetBuffer('Session', json_encode($client->session(), JSON_THROW_ON_ERROR));
+            $this->SetBuffer('RequestDiagnostics', json_encode($client->diagnostics(), JSON_THROW_ON_ERROR));
+        }
+    }
+
+    private function discoverWithDiagnostics(): array
+    {
+        $this->SetBuffer('DiscoveryDiagnostics', '');
+        return $this->authenticated(function (Client $client): array {
+            try { return $client->discover(); }
+            finally { $this->SetBuffer('DiscoveryDiagnostics', json_encode($client->diagnostics(), JSON_THROW_ON_ERROR)); }
+        });
     }
 
     private function verifySelectedDevice(): void
     {
         $serial = $this->ReadPropertyString('Serial');
         if ($this->GetBuffer('VerifiedSerial') === $serial) { return; }
-        $devices = $this->authenticated(fn(Client $client): array => $client->discover());
+        $devices = $this->discoverWithDiagnostics();
         $this->WriteAttributeString('Devices', json_encode($devices, JSON_THROW_ON_ERROR));
         foreach ($devices as $device) {
             if ($device['serial'] === $serial && $device['model'] === Protocol::MODEL) {
@@ -241,6 +274,7 @@ class DreoHeater extends IPSModuleStrict
         $map = ['Power' => 'poweron', 'Mode' => 'mode', 'HeatLevel' => 'htalevel', 'TargetTemperature' => 'ecolevel'];
         foreach ($map as $ident => $key) { $this->MaintainAction($ident, !$offline && isset($state[$key])); }
         $this->SetStatus($offline ? 204 : 102);
+        $this->feedback('Gerätestatus erfolgreich aktualisiert.');
         $this->SetTimerInterval('Refresh', $this->interval() * 1000);
     }
 
@@ -281,6 +315,7 @@ class DreoHeater extends IPSModuleStrict
                 if ($secret !== '') { $message = str_replace($secret, '[entfernt]', $message); }
             }
             $this->SetValue('LastError', $message);
+            $this->feedback('Fehler: ' . $message);
             $pending = json_decode($this->GetBuffer('Pending'), true) ?? [];
             if (isset($pending['params'])) {
                 $this->SetValue('LastCommand', ($pending['acknowledged'] ?? false)
@@ -292,7 +327,8 @@ class DreoHeater extends IPSModuleStrict
             $failures = min(5, (int) $this->GetBuffer('Failures') + 1);
             $this->SetBuffer('Failures', (string) $failures);
             $delay = min(3600, max($this->interval(), min(300, 30 * (2 ** ($failures - 1)))));
-            $this->SetTimerInterval('Refresh', $this->ReadPropertyBoolean('Open') && $e->getCode() !== 100022 ? $delay * 1000 : 0);
+            $this->SetTimerInterval('Refresh', $this->ReadPropertyBoolean('Open') && $this->ReadPropertyString('Serial') !== ''
+                && $e->getCode() !== 100022 ? $delay * 1000 : 0);
             return false;
         } finally { IPS_SemaphoreLeave($lock); }
     }
@@ -300,6 +336,12 @@ class DreoHeater extends IPSModuleStrict
     private function actions(bool $enabled): void
     {
         foreach (['Power', 'Mode', 'HeatLevel', 'TargetTemperature'] as $ident) { $this->MaintainAction($ident, $enabled); }
+    }
+
+    private function feedback(string $message): void
+    {
+        $this->SetBuffer('SearchFeedback', $message);
+        $this->UpdateFormField('Feedback', 'caption', $message);
     }
 
     private function deviceOptions(): array

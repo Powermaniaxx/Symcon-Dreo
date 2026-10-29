@@ -2,7 +2,7 @@
     "elements": [
         {
             "type": "Label",
-            "caption": "Symcon Dreo 0.1.0-beta.1 – Vorabversion. Bisher kein Test mit echtem Gerät in Symcon."
+            "caption": "Symcon Dreo 0.1.0-beta.2 – Vorabversion. Gerätesuche und Steuerung sind noch in Erprobung."
         },
         {
             "type": "Label",
@@ -37,6 +37,11 @@
                     "value": "NA"
                 }
             ]
+        },
+        {
+            "type": "Label",
+            "name": "Feedback",
+            "caption": "Zugangsdaten speichern und Geräte suchen."
         },
         {
             "type": "Label",
@@ -77,9 +82,9 @@
             "onClick": "DREO_ResetSession($id);"
         },
         {
-            "type": "Label",
-            "name": "Feedback",
-            "caption": "Geräte suchen, Gerät auswählen, Aktiv einschalten und Änderungen übernehmen."
+            "type": "Button",
+            "caption": "Diagnose anzeigen",
+            "onClick": "echo DREO_GetDiagnostics($id);"
         }
     ],
     "status": [
@@ -112,6 +117,11 @@
             "code": 204,
             "icon": "error",
             "caption": "Dreo-Gerät meldet offline"
+        },
+        {
+            "code": 201,
+            "icon": "inactive",
+            "caption": "Gerät noch nicht ausgewählt – bitte Geräte suchen"
         }
     ]
 }

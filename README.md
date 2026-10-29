@@ -2,9 +2,9 @@
 
 Native Anbindung des **Dreo 720S (DR-HSH040S)** an **IP-Symcon 9.0 oder neuer**. Symcon spricht die Dreo-Cloud direkt an. Home Assistant, HACS, MQTT und zusätzliche Container sind dafür nicht erforderlich.
 
-**Automatisierte Tests:** PHP 8.2, 8.3 und 8.4 erfolgreich: [GitHub Actions](https://github.com/Powermaniaxx/Symcon-Dreo/actions/runs/40964932813).
+**Automatisierte Tests:** [Aktueller GitHub-Actions-Status](https://github.com/Powermaniaxx/Symcon-Dreo/actions). Reale Gerätetests sind davon getrennt.
 
-**Stand: 0.1.0-beta.1. Vorabversion für kontrollierte Tests.** Der Quellcode wurde mit synthetischen API-Antworten, einem SDK-Ersatz und lokalen WebSocket-Gegenstellen getestet. Ein erfolgreicher Test mit einem echten Dreo-Konto, einem physischen 720S und einem echten Symcon-Kernel steht aus. Diese Version ist deshalb keine freigegebene stabile oder offiziell von Dreo unterstützte Integration.
+**Stand: 0.1.0-beta.2. Vorabversion für kontrollierte Tests.** Der Quellcode wurde mit synthetischen API-Antworten, einem SDK-Ersatz und lokalen WebSocket-Gegenstellen getestet. Ein erfolgreicher Test mit einem echten Dreo-Konto, einem physischen 720S und einem echten Symcon-Kernel steht aus. Diese Version ist deshalb keine freigegebene stabile oder offiziell von Dreo unterstützte Integration.
 
 ## Funktionen
 
@@ -37,6 +37,8 @@ Ein Gerät muss bereits mit dem eigenen Dreo-Konto in der Hersteller-App eingeri
 3. Eigene E-Mail, eigenes Dreo-Passwort und Kontoregion eintragen. Änderungen übernehmen. Die zunächst deaktivierte Instanz kann schon nach Geräten suchen.
 4. **Geräte suchen** anklicken, den eigenen 720S auswählen, **Aktiv** einschalten und Änderungen übernehmen.
 5. Erst wenn **Status gültig** wahr ist, die Statuswerte verwenden und Schaltbefehle testen.
+
+Die Rückmeldung der Suche steht direkt bei der Geräteauswahl. Falls die Liste leer bleibt, **Diagnose anzeigen** anklicken: HTTP-/API-Codes und anonymisierte Anzahlen unterscheiden Verbindungsfehler, leere Antworten und nicht verwendbare Geräteeinträge. Zugangsdaten, Token und Seriennummern werden dabei nicht ausgegeben. Eine noch fehlende Auswahl wird als Wartezustand angezeigt und löst keine automatische Fehlerabfrageschleife aus.
 
 Die Bibliothek enthält keine persönlichen Zugangsdaten, festen Objekt-IDs, Zima-Pfade oder Abhängigkeit von einer bestimmten Hausstatus-Visualisierung. Es wird noch kein Module-Store-Eintrag angeboten. Installation und Updates erfolgen zunächst über dieses Repository. `main` ist während dieser Testphase ausdrücklich der Beta-Stand.
 

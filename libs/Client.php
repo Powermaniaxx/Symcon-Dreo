@@ -14,6 +14,7 @@ class Client
     private string $token;
     private float $deadline;
     private ?\Closure $http;
+    private array $diagnostics = [];
 
     public function __construct(string $region, string $token = '', ?\Closure $http = null, float $budget = 22.0)
     {
@@ -25,6 +26,7 @@ class Client
     }
 
     public function session(): array { return ['region' => $this->region, 'token' => $this->token]; }
+    public function diagnostics(): array { return $this->diagnostics; }
 
     public function login(string $email, string $password): void
     {
@@ -58,6 +60,7 @@ class Client
                     throw $e;
                 }
                 foreach (Protocol::devices($data) as $device) { $found[$device['serial']] = $device; }
+                $this->diagnostics['discovery'][] = ['path' => $path, 'page' => $page, 'counts' => Protocol::discoveryStats($data)];
                 $pages = (int) ($data['totalPage'] ?? 1);
                 if ($pages > 10) { throw new ApiException('Geräteliste hat mehr als zehn Seiten; nicht vollständig eingelesen.'); }
                 if ($page >= $pages) { break; }
@@ -81,6 +84,8 @@ class Client
 
     private function api(string $path, string $method, array $body): array
     {
+        $requestIndex = count($this->diagnostics['requests'] ?? []);
+        $this->diagnostics['requests'][] = ['path' => $path, 'httpStatus' => null, 'apiCode' => null];
         $remaining = $this->deadline - microtime(true);
         if ($remaining < 0.5) { throw new ApiException('Zeitlimit der Dreo-Abfrage erreicht.'); }
         $host = 'https://app-api-' . ($this->region === 'EU' ? 'eu' : 'us') . '.dreo-tech.com';
@@ -111,10 +116,12 @@ class Client
                 if ($raw === false) { throw new ApiException('Dreo-Verbindung fehlgeschlagen (cURL ' . curl_errno($ch) . ').'); }
             } finally { curl_close($ch); }
         }
+        $this->diagnostics['requests'][$requestIndex]['httpStatus'] = (int) $status;
         if ($status !== 200) { throw new ApiException('Dreo antwortet mit HTTP ' . $status . '.', (int) $status); }
         try { $response = json_decode($raw, true, 64, JSON_THROW_ON_ERROR); }
         catch (\JsonException $e) { throw new ApiException('Dreo liefert keine gültige JSON-Antwort.'); }
         if (!is_array($response) || !array_key_exists('code', $response)) { throw new ApiException('Unbekanntes Dreo-Antwortformat.'); }
+        $this->diagnostics['requests'][$requestIndex]['apiCode'] = is_numeric($response['code']) ? (int) $response['code'] : null;
         if ((string) $response['code'] !== '0') {
             $code = is_numeric($response['code']) ? (int) $response['code'] : -1;
             throw new ApiException($code === 100022 ? 'Dreo-Anmeldung abgelehnt: Konto oder Passwort prüfen.' : 'Dreo-API meldet Fehlercode ' . $code . '.', $code);

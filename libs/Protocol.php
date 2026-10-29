@@ -35,6 +35,25 @@ final class Protocol
         return array_values($found);
     }
 
+    public static function discoveryStats(array $data): array
+    {
+        $stats = ['recordsWithModel' => 0, 'supportedRecords' => 0, 'supportedMissingSerial' => 0,
+            'supportedUsable' => 0, 'topLevelListCount' => isset($data['list']) && is_array($data['list']) ? count($data['list']) : null];
+        $walk = static function (array $node) use (&$walk, &$stats): void {
+            if (isset($node['model']) && is_string($node['model'])) {
+                ++$stats['recordsWithModel'];
+                if ($node['model'] === self::MODEL) {
+                    ++$stats['supportedRecords'];
+                    $sn = $node['sn'] ?? $node['deviceSn'] ?? null;
+                    ++$stats[is_string($sn) && $sn !== '' ? 'supportedUsable' : 'supportedMissingSerial'];
+                }
+            }
+            foreach ($node as $child) { if (is_array($child)) { $walk($child); } }
+        };
+        $walk($data);
+        return $stats;
+    }
+
     public static function unwrap(array $data): array
     {
         if (!isset($data['mixed']) || !is_array($data['mixed'])) {
