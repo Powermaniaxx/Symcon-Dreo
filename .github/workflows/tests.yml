@@ -21,3 +21,4 @@ jobs:
         run: find DreoHeater libs tests -name '*.php' -print0 | xargs -0 -n1 php -l
       - run: php tests/run.php
       - run: php tests/websocket-integration.php
+      - run: php tests/http-integration.php

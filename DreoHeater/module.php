@@ -163,15 +163,29 @@ class DreoHeater extends IPSModuleStrict
     public function GetDiagnostics(): string
     {
         // Deliberate allowlist: no account name, serial, password, bearer token or raw API data.
-        return json_encode(['module' => 'SymconDreo', 'version' => '0.1.0-beta.2', 'model' => Protocol::MODEL,
+        return json_encode(['module' => 'SymconDreo', 'version' => '0.1.0-beta.3', 'model' => Protocol::MODEL,
             'region' => $this->ReadPropertyString('Region'), 'active' => $this->ReadPropertyBoolean('Open'),
             'stateValid' => $this->GetValue('StateValid'), 'lastUpdateUtc' => $this->GetValue('LastUpdate'),
             'lastError' => $this->GetValue('LastError'),
             'discovery' => json_decode($this->GetBuffer('DiscoveryDiagnostics'), true) ?? [],
             'lastRequests' => json_decode($this->GetBuffer('RequestDiagnostics'), true) ?? [],
+            'networkTest' => json_decode($this->GetBuffer('NetworkTest'), true) ?? [],
             'serverRegion' => (json_decode($this->GetBuffer('Session'), true) ?? [])['region'] ?? null,
             'stateKeys' => array_keys(json_decode($this->GetBuffer('State'), true) ?? [])],
             JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    }
+
+    public function TestConnection(): string
+    {
+        $region = $this->ReadPropertyString('Region');
+        $results = ['region' => $region, 'note' => 'GET ohne Konto oder Token. Ein HTTP-Fehler kann Erreichbarkeit bestätigen; dies prüft keine Anmeldung.'];
+        foreach (['auto', 'ipv4'] as $mode) {
+            $client = new Client($region, '', null, 8.0, $mode);
+            $results[$mode] = $client->probe();
+        }
+        $json = json_encode($results, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+        $this->SetBuffer('NetworkTest', $json);
+        return $json;
     }
 
     protected function newClient(string $region, string $token): Client

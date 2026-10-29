@@ -1,5 +1,13 @@
 # Änderungen
 
+## 0.1.0-beta.3 – 29.10.2026
+
+- Verbindungsaufbau bis zu 8 statt 4 Sekunden und einzelne HTTP-Anfragen bis zu 15 statt 8 Sekunden; das gemeinsame Budget von 22 Sekunden bleibt bestehen.
+- Auch bei cURL-Fehlern werden Fehlercode, HTTP-Status und DNS-/TCP-/TLS-/Antwortzeiten gespeichert. Zuvor blieb der HTTP-Status bei Transportfehlern leer.
+- Neuer Knopf „Verbindung prüfen“: anonyme GET-Abfragen mit automatischer Adressauswahl und IPv4, ohne Konto, Passwort oder Token; verändert keine Gerätezustände.
+- Tests mit echtem cURL gegen lokale Gegenstellen prüfen Zeitüberschreitung und anonymen IPv4-Test.
+- Ob das beim Nutzer beobachtete cURL-28-Zeitlimit an DNS, Verbindung, Serverantwort oder den bisherigen Limits liegt, ist noch offen.
+
 ## 0.1.0-beta.2 – 29.10.2026
 
 - Ersteinrichtung: eine noch fehlende Geräteauswahl ist ein eigener Wartezustand statt einer ungültigen Konfiguration.

@@ -117,4 +117,15 @@ final class Protocol
         }
         return true;
     }
+
+    public static function transferStats(array $info, int $curlCode): array
+    {
+        // A whitelist deliberately excludes the effective URL, IP addresses and request headers.
+        $result = ['httpStatus' => (int) ($info['http_code'] ?? 0), 'curlCode' => $curlCode];
+        foreach (['dnsMs' => 'namelookup_time', 'connectMs' => 'connect_time', 'tlsMs' => 'appconnect_time',
+            'firstByteMs' => 'starttransfer_time', 'totalMs' => 'total_time'] as $name => $key) {
+            $result[$name] = isset($info[$key]) && is_numeric($info[$key]) ? round((float) $info[$key] * 1000, 1) : null;
+        }
+        return $result;
+    }
 }

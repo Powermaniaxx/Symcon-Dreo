@@ -25,6 +25,22 @@ function device(string $serial = 'fixture-720S'): array { return ['model' => Pro
 
 check(Protocol::celsius(70) === 21.1, '70F is 21.1C');
 check(Protocol::celsius(32) === 0.0, 'freezing point');
+$transport = Protocol::transferStats(['http_code' => 0, 'total_time' => 8.0, 'namelookup_time' => 0.02,
+    'connect_time' => 0.05, 'appconnect_time' => 0.1, 'starttransfer_time' => 0.0,
+    'url' => 'private-token-url', 'primary_ip' => 'private-address'], 28);
+check($transport['curlCode'] === 28 && $transport['httpStatus'] === 0 && $transport['totalMs'] === 8000.0, 'failed cURL transfer retains error and timing instead of null status');
+check($transport['dnsMs'] === 20.0 && $transport['tlsMs'] === 100.0, 'transport timings normalized to milliseconds');
+check(!str_contains(json_encode($transport), 'private-token') && !str_contains(json_encode($transport), 'private-address'), 'transport diagnostics exclude URL and IP address');
+fails(fn() => (new Client('EU', 'fixture-token'))->probe(), 'anonymous connectivity probe rejects bearer session');
+$probeRequest = null;
+$probe = new Client('EU', '', static function ($url, $method, $headers, $body) use (&$probeRequest) {
+    $probeRequest = compact('url', 'method', 'headers', 'body'); return [405, ''];
+}, 8, 'ipv4');
+$probeResult = $probe->probe();
+check($probeRequest['method'] === 'GET' && $probeRequest['body'] === [] && !str_contains(implode(' ', $probeRequest['headers']), 'Authorization'), 'connectivity probe never submits account or password');
+check($probeResult['requests'][0]['httpStatus'] === 405 && $probeResult['requests'][0]['addressFamily'] === 'ipv4', 'HTTP method rejection still recorded as a received response');
+$limit = $probeResult['requests'][0];
+check($limit['timeoutMs'] <= 8000 && $limit['connectTimeoutMs'] <= $limit['timeoutMs'], 'request timeouts stay inside operation budget');
 for ($c = 5; $c <= 35; ++$c) {
     $f = Protocol::command('TargetTemperature', $c)['ecolevel'];
     check(Protocol::targetCelsius($f) === (float) $c, 'whole-C setpoint roundtrip ' . $c);

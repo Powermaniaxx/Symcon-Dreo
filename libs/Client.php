@@ -15,18 +15,30 @@ class Client
     private float $deadline;
     private ?\Closure $http;
     private array $diagnostics = [];
+    private string $addressFamily;
 
-    public function __construct(string $region, string $token = '', ?\Closure $http = null, float $budget = 22.0)
+    public function __construct(string $region, string $token = '', ?\Closure $http = null, float $budget = 22.0, string $addressFamily = 'auto')
     {
         if (!in_array($region, ['EU', 'NA'], true)) { throw new \InvalidArgumentException('Ungültige Region.'); }
         $this->region = $region;
         $this->token = $token;
         $this->http = $http;
+        if (!in_array($addressFamily, ['auto', 'ipv4'], true)) { throw new \InvalidArgumentException('Ungültiger Verbindungsmodus.'); }
+        $this->addressFamily = $addressFamily;
         $this->deadline = microtime(true) + max(0, min(22.0, $budget));
     }
 
     public function session(): array { return ['region' => $this->region, 'token' => $this->token]; }
     public function diagnostics(): array { return $this->diagnostics; }
+
+    public function probe(): array
+    {
+        if ($this->token !== '') { throw new \LogicException('Verbindungstest darf kein Zugriffstoken verwenden.'); }
+        try { $this->api('/api/oauth/login', 'GET', []); }
+        catch (ApiException $e) { $this->diagnostics['probeResult'] = $e->getMessage(); }
+        // HTTP 4xx/5xx can still prove connectivity. This is not a credential/login test.
+        return $this->diagnostics;
+    }
 
     public function login(string $email, string $password): void
     {
@@ -88,6 +100,10 @@ class Client
         $this->diagnostics['requests'][] = ['path' => $path, 'httpStatus' => null, 'apiCode' => null];
         $remaining = $this->deadline - microtime(true);
         if ($remaining < 0.5) { throw new ApiException('Zeitlimit der Dreo-Abfrage erreicht.'); }
+        $connectTimeout = min(8000, (int) ($remaining * 1000));
+        $timeout = min(15000, (int) ($remaining * 1000));
+        $this->diagnostics['requests'][$requestIndex] += ['connectTimeoutMs' => $connectTimeout,
+            'timeoutMs' => $timeout, 'addressFamily' => $this->addressFamily];
         $host = 'https://app-api-' . ($this->region === 'EU' ? 'eu' : 'us') . '.dreo-tech.com';
         $query = ['timestamp' => (string) (int) floor(microtime(true) * 1000)];
         if ($method === 'GET') { $query = array_merge($body, $query); }
@@ -103,17 +119,26 @@ class Client
             if ($ch === false) { throw new ApiException('HTTP-Verbindung konnte nicht vorbereitet werden.'); }
             try {
                 curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_HTTPHEADER => $headers,
-                    CURLOPT_CONNECTTIMEOUT_MS => min(4000, (int) ($remaining * 1000)),
-                    CURLOPT_TIMEOUT_MS => min(8000, (int) ($remaining * 1000)),
+                    CURLOPT_CONNECTTIMEOUT_MS => $connectTimeout,
+                    CURLOPT_TIMEOUT_MS => $timeout,
                     CURLOPT_SSL_VERIFYPEER => true, CURLOPT_SSL_VERIFYHOST => 2,
                     CURLOPT_FOLLOWLOCATION => false, CURLOPT_ENCODING => '']);
+                if ($this->addressFamily === 'ipv4') { curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4); }
                 if ($method === 'POST') {
                     curl_setopt($ch, CURLOPT_POST, true);
                     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body, JSON_THROW_ON_ERROR));
                 }
                 $raw = curl_exec($ch);
-                $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                if ($raw === false) { throw new ApiException('Dreo-Verbindung fehlgeschlagen (cURL ' . curl_errno($ch) . ').'); }
+                $curlCode = curl_errno($ch);
+                $info = curl_getinfo($ch);
+                $info['appconnect_time'] = curl_getinfo($ch, CURLINFO_APPCONNECT_TIME);
+                $stats = Protocol::transferStats($info, $curlCode);
+                $this->diagnostics['requests'][$requestIndex] = array_merge($this->diagnostics['requests'][$requestIndex], $stats);
+                $status = $stats['httpStatus'];
+                if ($raw === false) {
+                    throw new ApiException('Dreo-Verbindung fehlgeschlagen (cURL ' . $curlCode .
+                        ($stats['totalMs'] !== null ? ', nach ' . round($stats['totalMs'] / 1000, 1) . ' s' : '') . ').');
+                }
             } finally { curl_close($ch); }
         }
         $this->diagnostics['requests'][$requestIndex]['httpStatus'] = (int) $status;
