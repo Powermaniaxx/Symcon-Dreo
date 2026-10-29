@@ -17,6 +17,6 @@ Datum: 29.10.2026. Lokale Laufzeit: PHP CLI 8.3.6.
 | Natives cURL: anonymer IPv4-Test mit HTTP 405 | Bestanden |
 | Echte Anmeldung, Cloud und Dreo 720S | Beim Nutzer bisher cURL 28; erfolgreiche Anmeldung noch nicht bestätigt |
 | Echter Symcon-9-Kernel und Visualisierung | Formular beim Nutzer sichtbar; vollständige Funktionsabnahme noch offen |
-| GitHub-CI-Matrix PHP 8.2/8.3/8.4 | Für Beta 3 noch ausstehend; [aktueller Teststatus](https://github.com/Powermaniaxx/Symcon-Dreo/actions) |
+| GitHub-CI-Matrix PHP 8.2/8.3/8.4 | Beta 3 bestanden: [Testlauf 40967738871](https://github.com/Powermaniaxx/Symcon-Dreo/actions/runs/40967738871) |
 
 Die synthetischen Antworten beruhen auf dem gelesenen Community-Protokoll. Sie beweisen nicht, dass jedes reale Konto oder jede Firmware dieselben Werte liefert. Vor öffentlicher stabiler Freigabe die offenen Prüfungen aus TESTPLAN.md durchführen.
