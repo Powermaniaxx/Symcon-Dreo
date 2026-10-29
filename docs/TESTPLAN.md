@@ -3,7 +3,7 @@
 ## Bisher durchgeführt
 
 - PHP-Syntaxprüfung aller Modul-, Bibliotheks- und Testdateien.
-- 134 Prüfungen mit synthetischen Protokollantworten und SDK-Ersatz unter PHP 8.3.6.
+- 149 Prüfungen mit synthetischen Protokollantworten und SDK-Ersatz unter PHP 8.3.6.
 - Sechs lokale WebSocket-Szenarien: Annahme, Fragmentierung plus Ping/Pong, Ablehnung, falsches Gerät, vorzeitiges Schließen, falscher Handshake.
 
 Die Entwicklungsumgebung verwendet keine echten Dreo-Zugangsdaten oder Geräte. Die Installation und das Formular sind inzwischen beim Nutzer in Symcon sichtbar; die Gerätesuche bleibt dort noch leer. Ein erfolgreicher Cloud-Zugriff und die Steuerung am echten Gerät sind noch nicht bestätigt.

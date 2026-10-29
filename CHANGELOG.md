@@ -1,5 +1,14 @@
 # Änderungen
 
+## 0.1.0-beta.4 – 29.10.2026
+
+- Der Verbindungstest startet ohne blockierenden Netzwerkaufruf im Formular und zeigt sofort einen sichtbaren Status.
+- Automatische Verbindung und IPv4 werden in getrennten Timer-Aufrufen von jeweils höchstens sechs Sekunden geprüft. Teilergebnisse bleiben erhalten.
+- Der Button und sein Timer verwenden den direkten Symcon-Kernelaufruf IPS_RequestAction statt einer zusätzlichen exportierten Hilfsfunktion.
+- Testende und Fehler stehen direkt im Formular sowie in der Statusvariable Verbindungstest.
+- Wiederholte Klicks duplizieren keinen laufenden Test; Konfigurationsänderungen brechen wartende Tests ab.
+- Die tatsächliche Ursache des zuvor gemeldeten Verbindungs-Timeouts ist weiterhin offen.
+
 ## 0.1.0-beta.3 – 29.10.2026
 
 - Verbindungsaufbau bis zu 8 statt 4 Sekunden und einzelne HTTP-Anfragen bis zu 15 statt 8 Sekunden; das gemeinsame Budget von 22 Sekunden bleibt bestehen.

@@ -2,7 +2,7 @@
     "elements": [
         {
             "type": "Label",
-            "caption": "Symcon Dreo 0.1.0-beta.3 – Vorabversion. Gerätesuche und Steuerung sind noch in Erprobung."
+            "caption": "Symcon Dreo 0.1.0-beta.4 – Vorabversion. Gerätesuche und Steuerung sind noch in Erprobung."
         },
         {
             "type": "Label",
@@ -89,7 +89,7 @@
         {
             "type": "Button",
             "caption": "Verbindung prüfen",
-            "onClick": "echo DREO_TestConnection($id);"
+            "onClick": "IPS_RequestAction($id, \"TestConnection\", true);"
         }
     ],
     "status": [

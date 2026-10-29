@@ -21,6 +21,7 @@ class DreoHeater extends IPSModuleStrict
         $this->RegisterPropertyInteger('Interval', 30);
         $this->RegisterAttributeString('Devices', '[]');
         $this->RegisterTimer('Refresh', 0, 'DREO_Refresh($_IPS["TARGET"]);');
+        $this->RegisterTimer('ConnectionTest', 0, 'IPS_RequestAction($_IPS["TARGET"], "RunConnectionTest", true);');
         $this->RegisterVariableBoolean('Power', 'Ein/Aus', ['PRESENTATION' => VARIABLE_PRESENTATION_SWITCH], 10);
         $this->RegisterVariableInteger('Mode', 'Betriebsart', $this->enumPresentation(['Nur Lüften', 'Heizen', 'ECO']), 20);
         $this->RegisterVariableInteger('HeatLevel', 'Heizstufe', $this->enumPresentation([1 => 'H1', 2 => 'H2', 3 => 'H3']), 30);
@@ -36,6 +37,7 @@ class DreoHeater extends IPSModuleStrict
         $this->RegisterVariableInteger('LastUpdateUnix', 'Letzte erfolgreiche Abfrage (Unixzeit)', [], 95);
         $this->RegisterVariableString('LastCommand', 'Letzter Schaltauftrag', [], 100);
         $this->RegisterVariableString('LastError', 'Letzter Fehler', [], 110);
+        $this->RegisterVariableString('ConnectionTestStatus', 'Verbindungstest', [], 120);
         $this->RegisterMessage(0, IPS_KERNELMESSAGE);
         $this->actions(false);
     }
@@ -44,6 +46,15 @@ class DreoHeater extends IPSModuleStrict
     {
         parent::ApplyChanges();
         $this->SetTimerInterval('Refresh', 0);
+        $this->SetTimerInterval('ConnectionTest', 0);
+        $this->SetBuffer('ProbeID', bin2hex(random_bytes(8)));
+        $network = json_decode($this->GetBuffer('NetworkTest'), true) ?? [];
+        if (($network['status'] ?? '') === 'running') {
+            $network['status'] = 'cancelled';
+            $network['note'] = 'Durch Konfigurationsänderung abgebrochen. Verbindungstest bei Bedarf erneut starten.';
+            $this->SetBuffer('NetworkTest', json_encode($network, JSON_THROW_ON_ERROR));
+            $this->SetValue('ConnectionTestStatus', $network['note']);
+        }
         $this->SetBuffer('Session', '');
         $this->SetBuffer('Pending', '');
         $this->SetBuffer('Failures', '0');
@@ -120,6 +131,11 @@ class DreoHeater extends IPSModuleStrict
 
     public function RequestAction(string $Ident, mixed $Value): void
     {
+        // Form/timer actions use the kernel entry point, independently of exported helper wrappers.
+        switch ($Ident) {
+            case 'TestConnection': $this->TestConnection(); return;
+            case 'RunConnectionTest': $this->connectionTestStep(); return;
+        }
         $params = Protocol::command($Ident, $Value);
         $ok = $this->guard(function () use ($params): bool {
             if (!$this->ReadPropertyBoolean('Open')) { throw new RuntimeException('Die Instanz ist deaktiviert.'); }
@@ -163,7 +179,7 @@ class DreoHeater extends IPSModuleStrict
     public function GetDiagnostics(): string
     {
         // Deliberate allowlist: no account name, serial, password, bearer token or raw API data.
-        return json_encode(['module' => 'SymconDreo', 'version' => '0.1.0-beta.3', 'model' => Protocol::MODEL,
+        return json_encode(['module' => 'SymconDreo', 'version' => '0.1.0-beta.4', 'model' => Protocol::MODEL,
             'region' => $this->ReadPropertyString('Region'), 'active' => $this->ReadPropertyBoolean('Open'),
             'stateValid' => $this->GetValue('StateValid'), 'lastUpdateUtc' => $this->GetValue('LastUpdate'),
             'lastError' => $this->GetValue('LastError'),
@@ -178,14 +194,74 @@ class DreoHeater extends IPSModuleStrict
     public function TestConnection(): string
     {
         $region = $this->ReadPropertyString('Region');
-        $results = ['region' => $region, 'note' => 'GET ohne Konto oder Token. Ein HTTP-Fehler kann Erreichbarkeit bestätigen; dies prüft keine Anmeldung.'];
-        foreach (['auto', 'ipv4'] as $mode) {
-            $client = new Client($region, '', null, 8.0, $mode);
-            $results[$mode] = $client->probe();
+        if (!in_array($region, ['EU', 'NA'], true)) { throw new RuntimeException('Region EU oder NA wählen.'); }
+        $existing = json_decode($this->GetBuffer('NetworkTest'), true) ?? [];
+        if (($existing['status'] ?? '') === 'running' && (int) ($existing['startedAtUnix'] ?? 0) > time() - 60) {
+            $this->networkFeedback('Verbindungstest läuft bereits. Ergebnisse folgen im Formular.');
+            return json_encode($existing, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
         }
+        $results = ['status' => 'running', 'region' => $region, 'startedAtUnix' => time(),
+            'startedAtUtc' => gmdate('Y-m-d H:i:s') . ' UTC', 'next' => 'auto',
+            'note' => 'GET ohne Konto oder Token. Ein HTTP-Fehler kann Erreichbarkeit bestätigen; dies prüft keine Anmeldung.'];
         $json = json_encode($results, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+        $this->SetBuffer('ProbeID', bin2hex(random_bytes(8)));
         $this->SetBuffer('NetworkTest', $json);
+        $this->networkFeedback('Verbindungstest gestartet. Die automatische Verbindung wird gleich geprüft …');
+        $this->SetTimerInterval('ConnectionTest', 1000);
         return $json;
+    }
+
+    private function connectionTestStep(): void
+    {
+        $lock = 'SymconDreo.Probe.' . $this->InstanceID;
+        if (!IPS_SemaphoreEnter($lock, 100)) { return; }
+        try {
+            $this->SetTimerInterval('ConnectionTest', 0);
+            $results = json_decode($this->GetBuffer('NetworkTest'), true) ?? [];
+            $mode = $results['next'] ?? '';
+            if (($results['status'] ?? '') !== 'running' || !in_array($mode, ['auto', 'ipv4'], true)) { return; }
+            $probeID = $this->GetBuffer('ProbeID');
+            $this->networkFeedback(($mode === 'auto' ? 'Automatische Verbindung' : 'IPv4-Verbindung') . ' wird geprüft …');
+            try { $result = $this->newProbeClient($results['region'], $mode)->probe(); }
+            catch (Throwable $e) { $result = ['error' => 'Verbindungstest intern abgebrochen (' . get_class($e) . ').']; }
+            if ($probeID !== $this->GetBuffer('ProbeID')) { return; }
+            $results[$mode] = $result;
+            $results['next'] = $mode === 'auto' ? 'ipv4' : null;
+            if ($mode === 'ipv4') {
+                $results['status'] = 'completed';
+                $results['completedAtUtc'] = gmdate('Y-m-d H:i:s') . ' UTC';
+            }
+            $this->SetBuffer('NetworkTest', json_encode($results, JSON_THROW_ON_ERROR));
+            $summary = 'Automatisch: ' . $this->probeSummary($results['auto'] ?? []);
+            if ($mode === 'auto') {
+                $this->networkFeedback($summary . ' IPv4 wird als Nächstes geprüft …');
+                $this->SetTimerInterval('ConnectionTest', 1000);
+            } else {
+                $this->networkFeedback('Verbindungstest beendet. ' . $summary . ' IPv4: ' . $this->probeSummary($results['ipv4'])
+                    . ' Details unter „Diagnose anzeigen“.');
+            }
+        } finally { IPS_SemaphoreLeave($lock); }
+    }
+
+    protected function newProbeClient(string $region, string $mode): Client
+    {
+        return new Client($region, '', null, 6.0, $mode);
+    }
+
+    private function networkFeedback(string $message): void
+    {
+        $this->SetValue('ConnectionTestStatus', $message);
+        $this->feedback($message);
+    }
+
+    private function probeSummary(array $result): string
+    {
+        $request = $result['requests'][0] ?? [];
+        if (isset($request['curlCode'])) {
+            return 'HTTP ' . (int) ($request['httpStatus'] ?? 0) . ', cURL ' . (int) $request['curlCode']
+                . (isset($request['totalMs']) ? ', ' . round($request['totalMs'] / 1000, 1) . ' s.' : '.');
+        }
+        return (string) ($result['probeResult'] ?? $result['error'] ?? 'noch kein Ergebnis.');
     }
 
     protected function newClient(string $region, string $token): Client

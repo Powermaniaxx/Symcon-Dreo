@@ -146,11 +146,23 @@ class FakeClient extends Client
     public function state(string $serial): array { ++$this->reads; if ($this->failure !== null) { $e = $this->failure; $this->failure = null; throw $e; } return $this->stateData; }
     public function send(string $serial, array $params): string { $this->sent[] = $params; if ($this->sendFailure !== null) { $e = $this->sendFailure; $this->sendFailure = null; throw $e; } if ($this->applyCommand) { $this->stateData = array_merge($this->stateData, $params); } return 'control-reply'; }
 }
+class FixtureProbe extends Client
+{
+    public function __construct(private array $result) { parent::__construct('EU', ''); }
+    public function probe(): array { return $this->result; }
+}
 class TestHeater extends DreoHeater
 {
     public FakeClient $fake;
+    public array $probeModes = [];
+    public string $probeFailureMode = '';
     public function __construct() { $this->fake = new FakeClient(); $this->Create(); }
     protected function newClient(string $region, string $token): Client { return $this->fake; }
+    protected function newProbeClient(string $region, string $mode): Client {
+        $this->probeModes[] = $mode;
+        if ($mode === $this->probeFailureMode) { throw new RuntimeException('private error detail'); }
+        return new FixtureProbe(['requests' => [['httpStatus' => 405, 'curlCode' => 0, 'totalMs' => 12.0]]]);
+    }
 }
 function heater(): TestHeater {
     $h = new TestHeater();
@@ -222,6 +234,37 @@ foreach (['fixture@example.invalid', 'fixture-password', 'fixture-token', 'fixtu
 }
 $form = json_decode($h->GetConfigurationForm(), true, 64, JSON_THROW_ON_ERROR);
 check(in_array('PasswordTextBox', array_column($form['elements'], 'type'), true), 'password uses masked form input');
+$async = new TestHeater();
+$async->RequestAction('TestConnection', true);
+$pendingProbe = json_decode($async->GetDiagnostics(), true)['networkTest'];
+check($pendingProbe['status'] === 'running' && $pendingProbe['next'] === 'auto', 'connection button immediately persists running status');
+check($async->probeModes === [] && $async->timers['ConnectionTest'] === 1000, 'button schedules work without performing blocking network calls');
+check(str_contains($async->values['ConnectionTestStatus'], 'gestartet'), 'button immediately displays visible acknowledgement');
+check($async->fake->logins === 0 && $async->fake->sent === [], 'anonymous test starts without credentials or heater commands');
+$probeId = $async->buffers['ProbeID']; $async->RequestAction('TestConnection', true);
+check($async->buffers['ProbeID'] === $probeId, 'repeated click does not duplicate active test');
+$async->RequestAction('RunConnectionTest', true);
+$partialProbe = json_decode($async->GetDiagnostics(), true)['networkTest'];
+check($async->probeModes === ['auto'] && isset($partialProbe['auto']) && !isset($partialProbe['ipv4']), 'first timer callback runs one probe and persists partial result');
+check($partialProbe['status'] === 'running' && $partialProbe['next'] === 'ipv4' && $async->timers['ConnectionTest'] === 1000, 'second probe scheduled as a separate timer callback');
+$async->RequestAction('RunConnectionTest', true);
+$finishedProbe = json_decode($async->GetDiagnostics(), true)['networkTest'];
+check($async->probeModes === ['auto', 'ipv4'] && $finishedProbe['status'] === 'completed', 'second callback completes both comparisons');
+check($async->timers['ConnectionTest'] === 0 && str_contains($async->values['ConnectionTestStatus'], 'HTTP 405'), 'finished test stops its timer and displays connection result');
+$async->RequestAction('RunConnectionTest', true);
+check(count($async->probeModes) === 2, 'stale timer does not repeat completed probes');
+$cancel = new TestHeater(); $cancel->TestConnection(); $cancel->ApplyChanges();
+check(json_decode($cancel->GetDiagnostics(), true)['networkTest']['status'] === 'cancelled' && $cancel->timers['ConnectionTest'] === 0, 'configuration change cancels queued test');
+$cancel->RequestAction('RunConnectionTest', true);
+check($cancel->probeModes === [], 'cancelled timer performs no requests');
+$failure = new TestHeater(); $failure->probeFailureMode = 'auto'; $failure->TestConnection();
+$failure->RequestAction('RunConnectionTest', true); $failure->RequestAction('RunConnectionTest', true);
+$failedProbe = json_decode($failure->GetDiagnostics(), true)['networkTest'];
+check($failedProbe['status'] === 'completed' && isset($failedProbe['auto']['error']) && isset($failedProbe['ipv4']), 'unexpected error is recorded and does not prevent the comparison');
+check(!str_contains($failure->GetDiagnostics(), 'private error detail'), 'unexpected probe exception does not expose raw details');
+$asyncForm = json_decode($async->GetConfigurationForm(), true);
+$connectionButton = array_values(array_filter($asyncForm['actions'], fn($x) => ($x['caption'] ?? '') === 'Verbindung prüfen'))[0];
+check(str_contains($connectionButton['onClick'], 'IPS_RequestAction'), 'form uses native kernel action entry point');
 $root = dirname(__DIR__); $library = json_decode(file_get_contents($root . '/library.json'), true, 64, JSON_THROW_ON_ERROR);
 $module = json_decode(file_get_contents($root . '/DreoHeater/module.json'), true, 64, JSON_THROW_ON_ERROR);
 check($module['name'] === 'DreoHeater' && $module['prefix'] === 'DREO', 'module metadata matches class/API');
