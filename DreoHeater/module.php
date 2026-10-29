@@ -22,6 +22,7 @@ class DreoHeater extends IPSModuleStrict
         $this->RegisterAttributeString('Devices', '[]');
         $this->RegisterTimer('Refresh', 0, 'DREO_Refresh($_IPS["TARGET"]);');
         $this->RegisterTimer('ConnectionTest', 0, 'IPS_RequestAction($_IPS["TARGET"], "RunConnectionTest", true);');
+        $this->RegisterTimer('FormAction', 0, 'IPS_RequestAction($_IPS["TARGET"], "RunFormAction", true);');
         $this->RegisterVariableBoolean('Power', 'Ein/Aus', ['PRESENTATION' => VARIABLE_PRESENTATION_SWITCH], 10);
         $this->RegisterVariableInteger('Mode', 'Betriebsart', $this->enumPresentation(['Nur Lüften', 'Heizen', 'ECO']), 20);
         $this->RegisterVariableInteger('HeatLevel', 'Heizstufe', $this->enumPresentation([1 => 'H1', 2 => 'H2', 3 => 'H3']), 30);
@@ -47,6 +48,8 @@ class DreoHeater extends IPSModuleStrict
         parent::ApplyChanges();
         $this->SetTimerInterval('Refresh', 0);
         $this->SetTimerInterval('ConnectionTest', 0);
+        $this->SetTimerInterval('FormAction', 0);
+        $this->SetBuffer('QueuedFormAction', '');
         $this->SetBuffer('ProbeID', bin2hex(random_bytes(8)));
         $network = json_decode($this->GetBuffer('NetworkTest'), true) ?? [];
         if (($network['status'] ?? '') === 'running') {
@@ -133,6 +136,24 @@ class DreoHeater extends IPSModuleStrict
     {
         // Form/timer actions use the kernel entry point, independently of exported helper wrappers.
         switch ($Ident) {
+            case 'FormDiscover': $this->queueFormAction('DiscoverDevices'); return;
+            case 'FormRefresh': $this->queueFormAction('Refresh'); return;
+            case 'RunFormAction': $this->runFormAction(); return;
+            case 'FormReset':
+                $this->recordFormAction('ResetSession');
+                $this->ResetSession();
+                $this->feedback('Sitzung zurückgesetzt.');
+                echo 'Sitzung zurückgesetzt.';
+                return;
+            case 'FormDiagnostics':
+                $this->recordFormAction('GetDiagnostics');
+                echo $this->GetDiagnostics();
+                return;
+            case 'FormTestConnection':
+                $this->recordFormAction('TestConnection');
+                $this->TestConnection();
+                echo 'Klick empfangen. Verbindungstest angefordert. Ergebnis im Formular und unter Diagnose anzeigen.';
+                return;
             case 'TestConnection': $this->TestConnection(); return;
             case 'RunConnectionTest': $this->connectionTestStep(); return;
         }
@@ -179,16 +200,56 @@ class DreoHeater extends IPSModuleStrict
     public function GetDiagnostics(): string
     {
         // Deliberate allowlist: no account name, serial, password, bearer token or raw API data.
-        return json_encode(['module' => 'SymconDreo', 'version' => '0.1.0-beta.4', 'model' => Protocol::MODEL,
+        return json_encode(['module' => 'SymconDreo', 'version' => '0.1.0-beta.5', 'model' => Protocol::MODEL,
             'region' => $this->ReadPropertyString('Region'), 'active' => $this->ReadPropertyBoolean('Open'),
             'stateValid' => $this->GetValue('StateValid'), 'lastUpdateUtc' => $this->GetValue('LastUpdate'),
             'lastError' => $this->GetValue('LastError'),
             'discovery' => json_decode($this->GetBuffer('DiscoveryDiagnostics'), true) ?? [],
             'lastRequests' => json_decode($this->GetBuffer('RequestDiagnostics'), true) ?? [],
             'networkTest' => json_decode($this->GetBuffer('NetworkTest'), true) ?? [],
+            'lastFormAction' => json_decode($this->GetBuffer('LastFormAction'), true) ?? [],
+            'queuedFormAction' => $this->GetBuffer('QueuedFormAction'),
             'serverRegion' => (json_decode($this->GetBuffer('Session'), true) ?? [])['region'] ?? null,
             'stateKeys' => array_keys(json_decode($this->GetBuffer('State'), true) ?? [])],
             JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    }
+
+    private function recordFormAction(string $action): void
+    {
+        $this->SetBuffer('LastFormAction', json_encode(['action' => $action, 'receivedAtUtc' => gmdate('Y-m-d H:i:s') . ' UTC'], JSON_THROW_ON_ERROR));
+    }
+
+    private function queueFormAction(string $action): void
+    {
+        $this->recordFormAction($action);
+        if ($this->GetBuffer('QueuedFormAction') !== '') {
+            echo 'Eine Formularaktion wartet bereits. Ergebnis im Formular prüfen.';
+            return;
+        }
+        $this->SetBuffer('QueuedFormAction', $action);
+        $this->feedback('Klick empfangen. ' . ($action === 'DiscoverDevices' ? 'Gerätesuche' : 'Statusabfrage') . ' startet im Hintergrund …');
+        $this->SetTimerInterval('FormAction', 1000);
+        echo 'Klick empfangen. Auftrag gestartet. Ergebnis erscheint im Formular; bei Zeitüberschreitung unter Diagnose anzeigen nachsehen.';
+    }
+
+    private function runFormAction(): void
+    {
+        $this->SetTimerInterval('FormAction', 0);
+        $action = $this->GetBuffer('QueuedFormAction');
+        $this->SetBuffer('QueuedFormAction', '');
+        if ($action === '') { return; }
+        if ($action === 'Refresh' && (!$this->ReadPropertyBoolean('Open') || $this->ReadPropertyString('Serial') === '')) {
+            $this->feedback('Für eine Statusabfrage zuerst ein Gerät auswählen, Aktiv einschalten und Änderungen übernehmen.');
+            return;
+        }
+        $ok = match ($action) {
+            'DiscoverDevices' => $this->DiscoverDevices(),
+            'Refresh' => $this->Refresh(),
+            default => false,
+        };
+        if (!$ok && $this->GetValue('LastError') === '') {
+            $this->feedback('Auftrag nicht ausgeführt. Eine andere Dreo-Abfrage kann bereits laufen; bitte erneut versuchen.');
+        }
     }
 
     public function TestConnection(): string

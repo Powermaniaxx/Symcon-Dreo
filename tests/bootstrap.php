@@ -10,6 +10,12 @@ foreach (['IPS_KERNELMESSAGE' => 10001, 'KR_READY' => 10103,
 function IPS_GetKernelRunlevel(): int { return KR_READY; }
 function IPS_SemaphoreEnter(string $name, int $timeout): bool { return !($GLOBALS['busy'] ?? false); }
 function IPS_SemaphoreLeave(string $name): void {}
+function IPS_RequestAction(int $id, string $ident, mixed $value): bool
+{
+    if (($GLOBALS['callbackFailure'] ?? false)) { throw new RuntimeException('Kernel-Testfehler'); }
+    $GLOBALS['callbackInstance']->RequestAction($ident, $value);
+    return true;
+}
 
 class IPSModuleStrict
 {

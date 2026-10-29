@@ -265,6 +265,42 @@ check(!str_contains($failure->GetDiagnostics(), 'private error detail'), 'unexpe
 $asyncForm = json_decode($async->GetConfigurationForm(), true);
 $connectionButton = array_values(array_filter($asyncForm['actions'], fn($x) => ($x['caption'] ?? '') === 'Verbindung prüfen'))[0];
 check(str_contains($connectionButton['onClick'], 'IPS_RequestAction'), 'form uses native kernel action entry point');
+// Execute the actual JSON callbacks, including their output and exception path.
+function clickButton(TestHeater $instance, string $caption): string {
+    $form = json_decode($instance->GetConfigurationForm(), true);
+    $button = array_values(array_filter($form['actions'], fn($x) => $x['caption'] === $caption))[0];
+    $GLOBALS['callbackInstance'] = $instance;
+    $id = $instance->InstanceID;
+    ob_start();
+    try { eval($button['onClick']); return ob_get_contents(); }
+    finally { ob_end_clean(); }
+}
+$ui = heater();
+check(str_contains(clickButton($ui, 'Oberfläche testen'), '0.1.0-beta.5: Klick empfangen. Instanz 101'), 'pure console callback immediately prints version and instance');
+check(str_contains(clickButton($ui, 'Geräte suchen'), 'Klick empfangen'), 'actual search callback acknowledges before network work');
+check($ui->timers['FormAction'] === 1000 && $ui->attributes['Devices'] === '[]', 'search waits for background timer');
+check(str_contains(clickButton($ui, 'Status aktualisieren'), 'wartet bereits'), 'second form job does not replace queued search');
+$ui->RequestAction('RunFormAction', true);
+check(count(json_decode($ui->attributes['Devices'], true)) === 1 && $ui->timers['FormAction'] === 0, 'form timer performs search once');
+$ui->RequestAction('RunFormAction', true);
+check(str_contains(clickButton($ui, 'Status aktualisieren'), 'Klick empfangen'), 'actual refresh callback acknowledges immediately');
+$ui->RequestAction('RunFormAction', true);
+check($ui->values['StateValid'], 'form timer refreshes actual fixture state');
+check(str_contains(clickButton($ui, 'Sitzung zurücksetzen'), 'Sitzung zurückgesetzt'), 'reset callback prints result');
+check(!empty(json_decode(clickButton($ui, 'Diagnose anzeigen'), true)['lastFormAction']['receivedAtUtc']), 'diagnostics callback prints JSON with received timestamp');
+check(str_contains(clickButton($ui, 'Verbindung prüfen'), 'Klick empfangen') && $ui->probeModes === [], 'connection callback prints before background probes');
+$GLOBALS['callbackFailure'] = true;
+check(str_contains(clickButton($ui, 'Diagnose anzeigen'), 'Symcon-Fehler: Kernel-Testfehler'), 'actual form callback exposes kernel errors as a dialog');
+check(str_contains(clickButton($ui, 'Oberfläche testen'), 'Klick empfangen'), 'pure console test independent of kernel action failure');
+$GLOBALS['callbackFailure'] = false;
+$ui = heater(); clickButton($ui, 'Geräte suchen'); $ui->ApplyChanges(); $ui->RequestAction('RunFormAction', true);
+check($ui->attributes['Devices'] === '[]' && $ui->timers['FormAction'] === 0, 'apply cancels waiting form work');
+$ui = new TestHeater(); clickButton($ui, 'Status aktualisieren'); $ui->RequestAction('RunFormAction', true);
+check(str_contains($ui->buffers['SearchFeedback'], 'zuerst ein Gerät auswählen'), 'refresh without selection produces visible explanation');
+$ui = heater(); $ui->fake->discoverFailure = new ApiException('Dreo antwortet mit HTTP 403.', 403);
+clickButton($ui, 'Geräte suchen'); $ui->RequestAction('RunFormAction', true);
+check(str_contains($ui->buffers['SearchFeedback'], 'HTTP 403'), 'background discovery errors remain visible');
+foreach ($asyncForm['actions'] as $button) { check($button['link'] === false, 'button output always opens dialog instead of detected link'); }
 $root = dirname(__DIR__); $library = json_decode(file_get_contents($root . '/library.json'), true, 64, JSON_THROW_ON_ERROR);
 $module = json_decode(file_get_contents($root . '/DreoHeater/module.json'), true, 64, JSON_THROW_ON_ERROR);
 check($module['name'] === 'DreoHeater' && $module['prefix'] === 'DREO', 'module metadata matches class/API');

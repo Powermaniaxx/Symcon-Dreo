@@ -4,7 +4,7 @@ Native Anbindung des **Dreo 720S (DR-HSH040S)** an **IP-Symcon 9.0 oder neuer**.
 
 **Automatisierte Tests:** [Aktueller GitHub-Actions-Status](https://github.com/Powermaniaxx/Symcon-Dreo/actions). Reale Gerätetests sind davon getrennt.
 
-**Stand: 0.1.0-beta.4. Vorabversion für kontrollierte Tests.** Der Quellcode wurde mit synthetischen API-Antworten, einem SDK-Ersatz und lokalen WebSocket-Gegenstellen getestet. Ein erfolgreicher Test mit einem echten Dreo-Konto, einem physischen 720S und einem echten Symcon-Kernel steht aus. Diese Version ist deshalb keine freigegebene stabile oder offiziell von Dreo unterstützte Integration.
+**Stand: 0.1.0-beta.5. Vorabversion für kontrollierte Tests.** Der Quellcode wurde mit synthetischen API-Antworten, einem SDK-Ersatz und lokalen WebSocket-Gegenstellen getestet. Ein erfolgreicher Test mit einem echten Dreo-Konto, einem physischen 720S und einem echten Symcon-Kernel steht aus. Diese Version ist deshalb keine freigegebene stabile oder offiziell von Dreo unterstützte Integration.
 
 ## Funktionen
 
@@ -37,6 +37,8 @@ Ein Gerät muss bereits mit dem eigenen Dreo-Konto in der Hersteller-App eingeri
 3. Eigene E-Mail, eigenes Dreo-Passwort und Kontoregion eintragen. Änderungen übernehmen. Die zunächst deaktivierte Instanz kann schon nach Geräten suchen.
 4. **Geräte suchen** anklicken, den eigenen 720S auswählen, **Aktiv** einschalten und Änderungen übernehmen.
 5. Erst wenn **Status gültig** wahr ist, die Statuswerte verwenden und Schaltbefehle testen.
+
+Wenn Schaltflächen scheinbar nichts auslösen: Das Formular schließen, in Module Control aktualisieren und das Formular erneut öffnen. Oben muss **0.1.0-beta.5** stehen. **Oberfläche testen** muss sofort einen Dialog mit Versionsnummer und Instanz-ID öffnen; dieser Knopf benötigt weder Modulaufruf noch Netzwerk. Bleibt auch dieser Dialog aus, liegt noch kein Nachweis vor, dass die Konsole das onClick-Skript ausführt. Die übrigen Knöpfe geben eine Klickbestätigung oder eine Fehlermeldung im Dialog zurück. Suche und manuelle Statusabfrage starten über einen Timer im Hintergrund. Nach Schließen des Dialogs steht das Ergebnis im Formular; notfalls Formular neu öffnen. Diagnose enthält den zuletzt empfangenen Formularauftrag mit Zeitstempel. Ein Klick auf **Änderungen übernehmen** verwirft noch wartende Formularaufträge.
 
 Bei einer Meldung wie **cURL 28** zuerst **Verbindung prüfen** anklicken. Sofort erscheint „Verbindungstest gestartet“. Die zwei Abfragen laufen anschließend einzeln im Hintergrund; nach etwa 15 Sekunden stehen das Ergebnis im Formular und die Details unter **Diagnose anzeigen**. Der aktuelle Stand bleibt zusätzlich in der Statusvariable **Verbindungstest** sichtbar. Der Test sendet keine Zugangsdaten und verändert keine Gerätezustände. Er vergleicht die automatische Verbindung mit IPv4. Auch HTTP 401, 404 oder 405 kann dabei eine erreichbare Gegenstelle belegen; der Test prüft ausdrücklich keine erfolgreiche Anmeldung. Die Ausgabe enthält Laufzeiten und Fehlercodes, keine URLs mit Token oder IP-Adressen. Sie wird auch von **Diagnose anzeigen** erfasst.
 

@@ -6,13 +6,14 @@ Datum: 29.10.2026. Lokale Laufzeit: PHP CLI 8.3.6.
 | --- | --- |
 | PHP-Syntax sämtlicher PHP-Dateien | Bestanden |
 | JSON-Parsing aller Konfigurationsdateien | Bestanden |
-| Protokoll-/Modultests mit synthetischen Antworten und SDK-Ersatz | 149 Prüfungen bestanden |
+| Protokoll-/Modultests mit synthetischen Antworten und SDK-Ersatz | 170 Prüfungen bestanden |
 | Lokaler WebSocket: Annahme | Bestanden |
 | Lokaler WebSocket: fragmentierte Antwort, Ping/Pong | Bestanden |
 | Lokaler WebSocket: abgelehnter Befehl | Bestanden |
 | Lokaler WebSocket: Antwort für ein anderes Gerät | Bestanden, keine falsche Annahme |
 | Lokaler WebSocket: vorzeitiges Schließen | Bestanden, Fehler erkannt |
 | Lokaler WebSocket: falsche Handshake-Prüfsumme | Bestanden, Verbindung abgelehnt |
+| Ausführung der JSON-onClick-Skripte: Dialogtexte, Fehlerpfad, direkte Klickprobe, Hintergrundaufträge | Bestanden mit SDK-Ersatz; reale Konsole noch offen |
 | Asynchroner Teststart, sichtbare Rückmeldung und getrennte Timer-Schritte | Bestanden mit SDK-Ersatz |
 | Teilresultate, wiederholter Klick, Abbruch bei Konfigurationsänderung | Bestanden mit SDK-Ersatz |
 | Natives cURL: Timeout mit erhaltenen Fehler-/Laufzeitdaten | Bestanden |

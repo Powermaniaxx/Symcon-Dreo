@@ -1,5 +1,13 @@
 # Änderungen
 
+## 0.1.0-beta.5 – 29.10.2026
+
+- Eigenständiger Oberfläche-testen-Knopf bestätigt einen Klick ohne Modulaufruf oder Netzwerk.
+- Alle Modul-Schaltflächen verwenden IPS_RequestAction und geben Text oder Fehler im Dialog aus; automatische Link-Erkennung ist ausgeschaltet.
+- Gerätesuche und manuelle Statusabfrage quittieren den Klick sofort und arbeiten anschließend im Timer.
+- Diagnose zeigt den letzten empfangenen Formularauftrag und wartende Arbeit.
+- Reale Ausführung der Buttons beim Nutzer bleibt zu prüfen; Ursache des Netzwerk-Timeouts weiterhin offen.
+
 ## 0.1.0-beta.4 – 29.10.2026
 
 - Der Verbindungstest startet ohne blockierenden Netzwerkaufruf im Formular und zeigt sofort einen sichtbaren Status.
