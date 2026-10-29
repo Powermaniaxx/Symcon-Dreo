@@ -1,0 +1,15 @@
+{
+    "id": "{8ECB7DF9-A42A-45E5-B868-65E7102A7B38}",
+    "name": "DreoHeater",
+    "type": 3,
+    "vendor": "Dreo",
+    "aliases": [
+        "Dreo 720S",
+        "Dreo Heizlüfter (Cloud)"
+    ],
+    "parentRequirements": [],
+    "childRequirements": [],
+    "implemented": [],
+    "prefix": "DREO",
+    "url": "https://github.com/Powermaniaxx/Symcon-Dreo/blob/main/README.md"
+}

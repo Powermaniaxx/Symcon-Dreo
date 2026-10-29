@@ -1,0 +1,117 @@
+{
+    "elements": [
+        {
+            "type": "Label",
+            "caption": "Symcon Dreo 0.1.0-beta.1 – Vorabversion. Bisher kein Test mit echtem Gerät in Symcon."
+        },
+        {
+            "type": "Label",
+            "caption": "Unterstützt: 720S (DR-HSH040S). Verbindung über Dreo-Cloud. Keine lokale LAN-Steuerung."
+        },
+        {
+            "type": "CheckBox",
+            "name": "Open",
+            "caption": "Aktiv"
+        },
+        {
+            "type": "ValidationTextBox",
+            "name": "Email",
+            "caption": "Dreo-Konto (E-Mail)"
+        },
+        {
+            "type": "PasswordTextBox",
+            "name": "Password",
+            "caption": "Dreo-Passwort"
+        },
+        {
+            "type": "Select",
+            "name": "Region",
+            "caption": "Kontoregion",
+            "options": [
+                {
+                    "caption": "Europa",
+                    "value": "EU"
+                },
+                {
+                    "caption": "Nordamerika",
+                    "value": "NA"
+                }
+            ]
+        },
+        {
+            "type": "Label",
+            "caption": "Zugangsdaten zuerst mit Änderungen übernehmen speichern. Danach Geräte suchen."
+        },
+        {
+            "type": "Select",
+            "name": "Serial",
+            "caption": "Gerät",
+            "options": []
+        },
+        {
+            "type": "NumberSpinner",
+            "name": "Interval",
+            "caption": "Statusabfrage in Sekunden",
+            "minimum": 30,
+            "maximum": 3600
+        },
+        {
+            "type": "Label",
+            "caption": "Ein/Aus ist unabhängig von Modus und Heizstufe. Solltemperatur wirkt im ECO-Modus."
+        }
+    ],
+    "actions": [
+        {
+            "type": "Button",
+            "caption": "Geräte suchen",
+            "onClick": "DREO_DiscoverDevices($id);"
+        },
+        {
+            "type": "Button",
+            "caption": "Status aktualisieren",
+            "onClick": "DREO_Refresh($id);"
+        },
+        {
+            "type": "Button",
+            "caption": "Sitzung zurücksetzen",
+            "onClick": "DREO_ResetSession($id);"
+        },
+        {
+            "type": "Label",
+            "name": "Feedback",
+            "caption": "Geräte suchen, Gerät auswählen, Aktiv einschalten und Änderungen übernehmen."
+        }
+    ],
+    "status": [
+        {
+            "code": 101,
+            "icon": "inactive",
+            "caption": "Warte auf erste Abfrage"
+        },
+        {
+            "code": 102,
+            "icon": "active",
+            "caption": "Dreo-Cloud erreichbar"
+        },
+        {
+            "code": 104,
+            "icon": "inactive",
+            "caption": "Deaktiviert"
+        },
+        {
+            "code": 200,
+            "icon": "error",
+            "caption": "Konfiguration unvollständig oder ungültig"
+        },
+        {
+            "code": 202,
+            "icon": "error",
+            "caption": "Dreo-Abfrage oder Schaltbefehl fehlgeschlagen"
+        },
+        {
+            "code": 204,
+            "icon": "error",
+            "caption": "Dreo-Gerät meldet offline"
+        }
+    ]
+}

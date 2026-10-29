@@ -1,0 +1,7 @@
+*.log
+.env
+.env.*
+!.env.example
+*.local.php
+coverage/
+.phpunit.cache/
