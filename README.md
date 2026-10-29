@@ -2,6 +2,8 @@
 
 Native Anbindung des **Dreo 720S (DR-HSH040S)** an **IP-Symcon 9.0 oder neuer**. Symcon spricht die Dreo-Cloud direkt an. Home Assistant, HACS, MQTT und zusätzliche Container sind dafür nicht erforderlich.
 
+**Automatisierte Tests:** PHP 8.2, 8.3 und 8.4 erfolgreich: [GitHub Actions](https://github.com/Powermaniaxx/Symcon-Dreo/actions/runs/40964932813).
+
 **Stand: 0.1.0-beta.1. Vorabversion für kontrollierte Tests.** Der Quellcode wurde mit synthetischen API-Antworten, einem SDK-Ersatz und lokalen WebSocket-Gegenstellen getestet. Ein erfolgreicher Test mit einem echten Dreo-Konto, einem physischen 720S und einem echten Symcon-Kernel steht aus. Diese Version ist deshalb keine freigegebene stabile oder offiziell von Dreo unterstützte Integration.
 
 ## Funktionen

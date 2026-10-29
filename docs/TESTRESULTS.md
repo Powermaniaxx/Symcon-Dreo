@@ -15,6 +15,6 @@ Datum: 29.10.2026. Lokale Laufzeit: PHP CLI 8.3.6.
 | Lokaler WebSocket: falsche Handshake-Prüfsumme | Bestanden, Verbindung abgelehnt |
 | Echte Anmeldung, Cloud und Dreo 720S | Nicht durchgeführt |
 | Echter Symcon-9-Kernel und Visualisierung | Nicht durchgeführt |
-| GitHub-CI-Matrix PHP 8.2/8.3/8.4 | Vorbereitet, noch nicht auf GitHub ausgeführt |
+| GitHub-CI-Matrix PHP 8.2/8.3/8.4 | Alle drei Jobs bestanden: [Testlauf 40964932813](https://github.com/Powermaniaxx/Symcon-Dreo/actions/runs/40964932813) |
 
 Die synthetischen Antworten beruhen auf dem gelesenen Community-Protokoll. Sie beweisen nicht, dass jedes reale Konto oder jede Firmware dieselben Werte liefert. Vor öffentlicher stabiler Freigabe die offenen Prüfungen aus TESTPLAN.md durchführen.
