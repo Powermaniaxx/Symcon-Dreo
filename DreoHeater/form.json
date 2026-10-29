@@ -2,7 +2,7 @@
     "elements": [
         {
             "type": "Label",
-            "caption": "Symcon Dreo 0.1.0-beta.5 – Vorabversion. Gerätesuche und Steuerung sind noch in Erprobung."
+            "caption": "Symcon Dreo 0.1.0-beta.6 – Vorabversion. Gerätesuche und Steuerung sind noch in Erprobung."
         },
         {
             "type": "Label",
@@ -22,6 +22,25 @@
             "type": "PasswordTextBox",
             "name": "Password",
             "caption": "Dreo-Passwort"
+        },
+        {
+            "type": "Select",
+            "name": "CloudAPI",
+            "caption": "Cloud-Zugang",
+            "options": [
+                {
+                    "caption": "Dreo OpenAPI (Hersteller-Client)",
+                    "value": "openapi"
+                },
+                {
+                    "caption": "App-API (bisheriger Zugang)",
+                    "value": "app"
+                }
+            ]
+        },
+        {
+            "type": "Label",
+            "caption": "OpenAPI meldet sich wie der Hersteller-Client zuerst am US-Server an und übernimmt die Kontoregion aus dem Token. Der bisherige App-Zugang bleibt auswählbar."
         },
         {
             "type": "Select",
@@ -70,36 +89,36 @@
             "type": "Button",
             "caption": "Oberfläche testen",
             "link": false,
-            "onClick": "echo \"Oberfläche 0.1.0-beta.5: Klick empfangen. Instanz \" . $id; "
+            "onClick": "echo \"Oberfläche 0.1.0-beta.6: Klick empfangen. Instanz \" . $id; "
         },
         {
             "type": "Button",
             "caption": "Geräte suchen",
-            "onClick": "try { if (!IPS_RequestAction($id, \"FormDiscover\", true)) { echo \"Symcon hat den Aufruf nicht ausgeführt.\"; } } catch (\\Throwable $e) { echo \"Symcon-Fehler: \" . $e->getMessage(); }",
+            "onClick": "try { if (IPS_RequestAction($id, \"FormDiscover\", true)) { echo DREO_GetFormFeedback($id); } else { echo \"Symcon meldet einen Aufruffehler. Letzte Rückmeldung: \" . DREO_GetFormFeedback($id); } } catch (\\Throwable $e) { echo \"Symcon-Fehler: \" . $e->getMessage(); }",
             "link": false
         },
         {
             "type": "Button",
             "caption": "Status aktualisieren",
-            "onClick": "try { if (!IPS_RequestAction($id, \"FormRefresh\", true)) { echo \"Symcon hat den Aufruf nicht ausgeführt.\"; } } catch (\\Throwable $e) { echo \"Symcon-Fehler: \" . $e->getMessage(); }",
+            "onClick": "try { if (IPS_RequestAction($id, \"FormRefresh\", true)) { echo DREO_GetFormFeedback($id); } else { echo \"Symcon meldet einen Aufruffehler. Letzte Rückmeldung: \" . DREO_GetFormFeedback($id); } } catch (\\Throwable $e) { echo \"Symcon-Fehler: \" . $e->getMessage(); }",
             "link": false
         },
         {
             "type": "Button",
             "caption": "Sitzung zurücksetzen",
-            "onClick": "try { if (!IPS_RequestAction($id, \"FormReset\", true)) { echo \"Symcon hat den Aufruf nicht ausgeführt.\"; } } catch (\\Throwable $e) { echo \"Symcon-Fehler: \" . $e->getMessage(); }",
+            "onClick": "try { if (IPS_RequestAction($id, \"FormReset\", true)) { echo DREO_GetFormFeedback($id); } else { echo \"Symcon meldet einen Aufruffehler. Letzte Rückmeldung: \" . DREO_GetFormFeedback($id); } } catch (\\Throwable $e) { echo \"Symcon-Fehler: \" . $e->getMessage(); }",
             "link": false
         },
         {
             "type": "Button",
             "caption": "Diagnose anzeigen",
-            "onClick": "try { if (!IPS_RequestAction($id, \"FormDiagnostics\", true)) { echo \"Symcon hat den Aufruf nicht ausgeführt.\"; } } catch (\\Throwable $e) { echo \"Symcon-Fehler: \" . $e->getMessage(); }",
+            "onClick": "try { echo DREO_GetDiagnostics($id); } catch (\\Throwable $e) { echo \"Symcon-Fehler: \" . $e->getMessage(); }",
             "link": false
         },
         {
             "type": "Button",
             "caption": "Verbindung prüfen",
-            "onClick": "try { if (!IPS_RequestAction($id, \"FormTestConnection\", true)) { echo \"Symcon hat den Aufruf nicht ausgeführt.\"; } } catch (\\Throwable $e) { echo \"Symcon-Fehler: \" . $e->getMessage(); }",
+            "onClick": "try { if (IPS_RequestAction($id, \"FormTestConnection\", true)) { echo DREO_GetFormFeedback($id); } else { echo \"Symcon meldet einen Aufruffehler. Letzte Rückmeldung: \" . DREO_GetFormFeedback($id); } } catch (\\Throwable $e) { echo \"Symcon-Fehler: \" . $e->getMessage(); }",
             "link": false
         }
     ],

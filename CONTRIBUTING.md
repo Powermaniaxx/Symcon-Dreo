@@ -1,6 +1,6 @@
 # Entwicklung und Fehlerberichte
 
-Vor Änderungen beide PHP-Testsuiten ausführen. Neue Gerätemodelle nur mit passenden Protokollzuordnungen, Tests und einer klaren Aussage zum realen Teststand hinzufügen. Unbekannte Modelle dürfen nicht automatisch Befehle eines vermeintlich ähnlichen Heizers erhalten.
+Vor Änderungen alle fünf PHP-Testsuiten ausführen. Neue Gerätemodelle nur mit passenden Protokollzuordnungen, Tests und einer klaren Aussage zum realen Teststand hinzufügen. Unbekannte Modelle dürfen nicht automatisch Befehle eines vermeintlich ähnlichen Heizers erhalten.
 
 Bei Fehlerberichten angeben: Symcon-Version, Modulversion, Modell, Kontoregion, betroffene Aktion, Verhalten der Dreo-App und bereinigte Ausgabe von `DREO_GetDiagnostics`. Keine Passwörter, Zugriffstoken, vollständigen Geräte-Seriennummern oder unveränderten HTTP-Mitschnitte veröffentlichen.
 

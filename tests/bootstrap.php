@@ -13,8 +13,20 @@ function IPS_SemaphoreLeave(string $name): void {}
 function IPS_RequestAction(int $id, string $ident, mixed $value): bool
 {
     if (($GLOBALS['callbackFailure'] ?? false)) { throw new RuntimeException('Kernel-Testfehler'); }
-    $GLOBALS['callbackInstance']->RequestAction($ident, $value);
+    if (($GLOBALS['callbackReject'] ?? false)) { return false; }
+    // Enforce silent internal actions. This is a regression constraint, not a kernel implementation.
+    ob_start();
+    try {
+        $GLOBALS['callbackInstance']->RequestAction($ident, $value);
+        if (ob_get_contents() !== '') { throw new RuntimeException('Unexpected output inside kernel action.'); }
+    } finally { ob_end_clean(); }
     return true;
+}
+function DREO_GetFormFeedback(int $id): string { return $GLOBALS['callbackInstance']->GetFormFeedback(); }
+function DREO_GetDiagnostics(int $id): string
+{
+    if (($GLOBALS['callbackFailure'] ?? false)) { throw new RuntimeException('Kernel-Testfehler'); }
+    return $GLOBALS['callbackInstance']->GetDiagnostics();
 }
 
 class IPSModuleStrict

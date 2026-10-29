@@ -39,6 +39,13 @@ $probe = new Client('EU', '', static function ($url, $method, $headers, $body) u
 $probeResult = $probe->probe();
 check($probeRequest['method'] === 'GET' && $probeRequest['body'] === [] && !str_contains(implode(' ', $probeRequest['headers']), 'Authorization'), 'connectivity probe never submits account or password');
 check($probeResult['requests'][0]['httpStatus'] === 405 && $probeResult['requests'][0]['addressFamily'] === 'ipv4', 'HTTP method rejection still recorded as a received response');
+check($probeResult['httpResponseReceived'] && !$probeResult['loginTested'], 'HTTP rejection confirms reachability without claiming login');
+$anonymous = (new Client('EU', '', static fn() => [200, '{"code":100000}']))->probe();
+check($anonymous['httpResponseReceived'] && !$anonymous['loginTested'] && $anonymous['requests'][0]['apiCode'] === 100000,
+    'observed anonymous API 100000 preserves API code and confirms only reachability');
+check(str_contains($anonymous['probeResult'], 'Server erreichbar') && str_contains($anonymous['probeResult'], 'Anmeldung nicht geprüft'), 'anonymous API error is not presented as a failed credential test');
+$unreachable = (new Client('EU', '', static fn() => [0, '']))->probe();
+check(!$unreachable['httpResponseReceived'] && !$unreachable['loginTested'], 'no HTTP response does not claim reachability or login');
 $limit = $probeResult['requests'][0];
 check($limit['timeoutMs'] <= 8000 && $limit['connectTimeoutMs'] <= $limit['timeoutMs'], 'request timeouts stay inside operation budget');
 for ($c = 5; $c <= 35; ++$c) {
@@ -141,7 +148,7 @@ class FakeClient extends Client
             'htalevel' => 1, 'ptcon' => false, 'connected' => true];
     }
     public function login(string $email, string $password): void { ++$this->logins; }
-    public function session(): array { return ['region' => 'EU', 'token' => 'fixture-token']; }
+    public function session(): array { return ['region' => 'EU', 'token' => 'fixture-token', 'apiMode' => 'app']; }
     public function discover(): array { if ($this->discoverFailure !== null) { throw $this->discoverFailure; } return $this->devices; }
     public function state(string $serial): array { ++$this->reads; if ($this->failure !== null) { $e = $this->failure; $this->failure = null; throw $e; } return $this->stateData; }
     public function send(string $serial, array $params): string { $this->sent[] = $params; if ($this->sendFailure !== null) { $e = $this->sendFailure; $this->sendFailure = null; throw $e; } if ($this->applyCommand) { $this->stateData = array_merge($this->stateData, $params); } return 'control-reply'; }
@@ -156,7 +163,7 @@ class TestHeater extends DreoHeater
     public FakeClient $fake;
     public array $probeModes = [];
     public string $probeFailureMode = '';
-    public function __construct() { $this->fake = new FakeClient(); $this->Create(); }
+    public function __construct() { $this->fake = new FakeClient(); $this->Create(); $this->properties['CloudAPI'] = 'app'; }
     protected function newClient(string $region, string $token): Client { return $this->fake; }
     protected function newProbeClient(string $region, string $mode): Client {
         $this->probeModes[] = $mode;
@@ -276,7 +283,7 @@ function clickButton(TestHeater $instance, string $caption): string {
     finally { ob_end_clean(); }
 }
 $ui = heater();
-check(str_contains(clickButton($ui, 'Oberfläche testen'), '0.1.0-beta.5: Klick empfangen. Instanz 101'), 'pure console callback immediately prints version and instance');
+check(str_contains(clickButton($ui, 'Oberfläche testen'), '0.1.0-beta.6: Klick empfangen. Instanz 101'), 'pure console callback immediately prints version and instance');
 check(str_contains(clickButton($ui, 'Geräte suchen'), 'Klick empfangen'), 'actual search callback acknowledges before network work');
 check($ui->timers['FormAction'] === 1000 && $ui->attributes['Devices'] === '[]', 'search waits for background timer');
 check(str_contains(clickButton($ui, 'Status aktualisieren'), 'wartet bereits'), 'second form job does not replace queued search');
@@ -288,11 +295,17 @@ $ui->RequestAction('RunFormAction', true);
 check($ui->values['StateValid'], 'form timer refreshes actual fixture state');
 check(str_contains(clickButton($ui, 'Sitzung zurücksetzen'), 'Sitzung zurückgesetzt'), 'reset callback prints result');
 check(!empty(json_decode(clickButton($ui, 'Diagnose anzeigen'), true)['lastFormAction']['receivedAtUtc']), 'diagnostics callback prints JSON with received timestamp');
-check(str_contains(clickButton($ui, 'Verbindung prüfen'), 'Klick empfangen') && $ui->probeModes === [], 'connection callback prints before background probes');
+check(str_contains(clickButton($ui, 'Verbindung prüfen'), 'Verbindungstest gestartet') && $ui->probeModes === [], 'connection callback prints before background probes');
 $GLOBALS['callbackFailure'] = true;
 check(str_contains(clickButton($ui, 'Diagnose anzeigen'), 'Symcon-Fehler: Kernel-Testfehler'), 'actual form callback exposes kernel errors as a dialog');
 check(str_contains(clickButton($ui, 'Oberfläche testen'), 'Klick empfangen'), 'pure console test independent of kernel action failure');
 $GLOBALS['callbackFailure'] = false;
+$GLOBALS['callbackReject'] = true;
+$rejectedUi = heater();
+check(str_contains(clickButton($rejectedUi, 'Geräte suchen'), 'Symcon meldet einen Aufruffehler')
+    && $rejectedUi->timers['FormAction'] === 0, 'rejected kernel call reports failure without claiming a queued search');
+$GLOBALS['callbackReject'] = false;
+check(json_decode(clickButton($rejectedUi, 'Diagnose anzeigen'), true)['version'] === '0.1.0-beta.6', 'diagnostics returns JSON directly without action output');
 $ui = heater(); clickButton($ui, 'Geräte suchen'); $ui->ApplyChanges(); $ui->RequestAction('RunFormAction', true);
 check($ui->attributes['Devices'] === '[]' && $ui->timers['FormAction'] === 0, 'apply cancels waiting form work');
 $ui = new TestHeater(); clickButton($ui, 'Status aktualisieren'); $ui->RequestAction('RunFormAction', true);

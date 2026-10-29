@@ -4,18 +4,18 @@ Native Anbindung des **Dreo 720S (DR-HSH040S)** an **IP-Symcon 9.0 oder neuer**.
 
 **Automatisierte Tests:** [Aktueller GitHub-Actions-Status](https://github.com/Powermaniaxx/Symcon-Dreo/actions). Reale Gerätetests sind davon getrennt.
 
-**Stand: 0.1.0-beta.5. Vorabversion für kontrollierte Tests.** Der Quellcode wurde mit synthetischen API-Antworten, einem SDK-Ersatz und lokalen WebSocket-Gegenstellen getestet. Ein erfolgreicher Test mit einem echten Dreo-Konto, einem physischen 720S und einem echten Symcon-Kernel steht aus. Diese Version ist deshalb keine freigegebene stabile oder offiziell von Dreo unterstützte Integration.
+**Stand: 0.1.0-beta.6. Vorabversion für kontrollierte Tests.** Der Quellcode wurde mit synthetischen API-Antworten, einem SDK-Ersatz und lokalen HTTP-/WebSocket-Gegenstellen getestet. Die neuen OpenAPI-Anfragen werden außerdem mit aufgezeichneten Anfragen des originalen Hersteller-Clients verglichen. Ein erfolgreicher Test mit einem echten Dreo-Konto, einem physischen 720S und einem echten Symcon-Kernel steht aus. Diese Version ist deshalb keine freigegebene stabile oder offiziell von Dreo unterstützte Integration.
 
 ## Funktionen
 
 | Funktion | Verhalten |
 | --- | --- |
-| Ein/Aus | Schaltet über `poweron`; keine künstliche Betriebsart `off` |
-| Betriebsart | Nur Lüften, Heizen, ECO |
+| Ein/Aus | OpenAPI: `power_switch`; App-API: `poweron` |
+| Betriebsart | Lüften, Heizen, ECO; bei OpenAPI nur mit eindeutiger Modellkonfiguration |
 | Heizstufe | H1 bis H3; wirkt bei Heizen |
-| Solltemperatur | 5 bis 35 °C in ganzen Grad; wirkt bei ECO |
-| Raumtemperatur | Aus Fahrenheit nach Celsius umgerechnet, eine Nachkommastelle |
-| Heizelement | `ptcon` wird ausschließlich gelesen |
+| Solltemperatur | Ganze °C, höchstens 5 bis 35 °C; zusätzlich begrenzt durch den bestätigten Modellbereich |
+| Raumtemperatur | Anzeige °C; OpenAPI-Einheit aus Modellkonfiguration, App-API beim 720S Fahrenheit |
+| Heizelement | `ptcon` nur lesend, soweit geliefert. `HeatingKnown` kennzeichnet einen vorhandenen Heizstatus |
 | Status | Standardmäßig alle 30 Sekunden; einstellbar von 30 bis 3600 Sekunden |
 | Geräteauswahl | EU-/NA-Anmeldung, Gerätesuche, Auswahl über Seriennummer |
 | Rückmeldung | Cloud-Annahme und tatsächliche Statusbestätigung werden getrennt behandelt |
@@ -34,13 +34,17 @@ Ein Gerät muss bereits mit dem eigenen Dreo-Konto in der Hersteller-App eingeri
 
 1. In Symcon **Module Control** öffnen und `https://github.com/Powermaniaxx/Symcon-Dreo.git` hinzufügen. Branch: `main`.
 2. Über **Instanz hinzufügen → Dreo → Dreo 720S** eine Instanz erstellen.
-3. Eigene E-Mail, eigenes Dreo-Passwort und Kontoregion eintragen. Änderungen übernehmen. Die zunächst deaktivierte Instanz kann schon nach Geräten suchen.
+3. Eigene E-Mail, eigenes Dreo-Passwort und Kontoregion eintragen. Cloud-Zugang **Dreo OpenAPI (Hersteller-Client)** beibehalten und Änderungen übernehmen. Die zunächst deaktivierte Instanz kann schon nach Geräten suchen.
 4. **Geräte suchen** anklicken, den eigenen 720S auswählen, **Aktiv** einschalten und Änderungen übernehmen.
 5. Erst wenn **Status gültig** wahr ist, die Statuswerte verwenden und Schaltbefehle testen.
 
-Wenn Schaltflächen scheinbar nichts auslösen: Das Formular schließen, in Module Control aktualisieren und das Formular erneut öffnen. Oben muss **0.1.0-beta.5** stehen. **Oberfläche testen** muss sofort einen Dialog mit Versionsnummer und Instanz-ID öffnen; dieser Knopf benötigt weder Modulaufruf noch Netzwerk. Bleibt auch dieser Dialog aus, liegt noch kein Nachweis vor, dass die Konsole das onClick-Skript ausführt. Die übrigen Knöpfe geben eine Klickbestätigung oder eine Fehlermeldung im Dialog zurück. Suche und manuelle Statusabfrage starten über einen Timer im Hintergrund. Nach Schließen des Dialogs steht das Ergebnis im Formular; notfalls Formular neu öffnen. Diagnose enthält den zuletzt empfangenen Formularauftrag mit Zeitstempel. Ein Klick auf **Änderungen übernehmen** verwirft noch wartende Formularaufträge.
+Beim Update von beta.5: Formular nach der Modulaktualisierung schließen und erneut öffnen. **Dreo OpenAPI (Hersteller-Client)** auswählen beziehungsweise den neuen Standard beibehalten, Änderungen übernehmen und **Geräte suchen** ausführen. Der bisherige App-API-Zugang bleibt als ausdrücklich wählbare Alternative erhalten; Zugangstoken werden zwischen diesen Verfahren nicht wiederverwendet.
 
-Bei einer Meldung wie **cURL 28** zuerst **Verbindung prüfen** anklicken. Sofort erscheint „Verbindungstest gestartet“. Die zwei Abfragen laufen anschließend einzeln im Hintergrund; nach etwa 15 Sekunden stehen das Ergebnis im Formular und die Details unter **Diagnose anzeigen**. Der aktuelle Stand bleibt zusätzlich in der Statusvariable **Verbindungstest** sichtbar. Der Test sendet keine Zugangsdaten und verändert keine Gerätezustände. Er vergleicht die automatische Verbindung mit IPv4. Auch HTTP 401, 404 oder 405 kann dabei eine erreichbare Gegenstelle belegen; der Test prüft ausdrücklich keine erfolgreiche Anmeldung. Die Ausgabe enthält Laufzeiten und Fehlercodes, keine URLs mit Token oder IP-Adressen. Sie wird auch von **Diagnose anzeigen** erfasst.
+OpenAPI startet die Anmeldung wie der Hersteller-Client am US-Endpunkt. Die tatsächliche Serverregion für Gerätezugriffe wird anschließend aus dem Token übernommen. Dafür ist kein manuelles Umschalten eines EU-Kontos auf Nordamerika nötig. Ein gefundenes Gerät bestätigt noch keine erfolgreiche Statusauswertung. Fehlt die Temperatureinheit in `config.heater_entity_config`, wird die Statusauswertung mit einer konkreten Fehlermeldung beendet. Bei fehlender oder mehrdeutiger Zuordnung der drei Modi wird deren Steuerung gesperrt. Die realen Metadaten des 720S müssen noch im Nutzertest bestätigt werden.
+
+Wenn Schaltflächen scheinbar nichts auslösen: Das Formular schließen, in Module Control aktualisieren und das Formular erneut öffnen. Oben muss **0.1.0-beta.6** stehen. **Oberfläche testen** muss sofort einen Dialog mit Versionsnummer und Instanz-ID öffnen; dieser Knopf benötigt weder Modulaufruf noch Netzwerk. Bleibt auch dieser Dialog aus, liegt noch kein Nachweis vor, dass die Konsole das onClick-Skript ausführt. Die übrigen Knöpfe führen intern eine Aktion ohne Textausgabe aus; der Formularaufrufer zeigt die gespeicherte Rückmeldung oder eine Fehlermeldung im Dialog an. Diagnose wird direkt als Rückgabewert gelesen. Suche und manuelle Statusabfrage starten über einen Timer im Hintergrund. Nach Schließen des Dialogs steht das Ergebnis im Formular; notfalls Formular neu öffnen. Diagnose enthält den zuletzt empfangenen Formularauftrag mit Zeitstempel. Ein Klick auf **Änderungen übernehmen** verwirft noch wartende Formularaufträge.
+
+Bei einer Meldung wie **cURL 28** zuerst **Verbindung prüfen** anklicken. Sofort erscheint „Verbindungstest gestartet“. Die zwei Abfragen laufen anschließend einzeln im Hintergrund; nach etwa 20 Sekunden stehen das Ergebnis im Formular und die Details unter **Diagnose anzeigen**. Der aktuelle Stand bleibt zusätzlich in der Statusvariable **Verbindungstest** sichtbar. Der Test sendet keine Zugangsdaten und verändert keine Gerätezustände. Er vergleicht die automatische Verbindung mit IPv4. Auch HTTP 401, 404 oder 405 kann dabei eine erreichbare Gegenstelle belegen; der Test prüft ausdrücklich keine erfolgreiche Anmeldung. Die Ausgabe enthält Laufzeiten und Fehlercodes, keine URLs mit Token oder IP-Adressen. Sie wird auch von **Diagnose anzeigen** erfasst. `httpResponseReceived=true` bestätigt lediglich eine HTTP-Antwort. `loginTested=false` stellt klar, dass dieser Test keine Anmeldung ausführt. Auch HTTP 200 mit API-Code 100000 aus der absichtlich ohne Zugangsdaten gestellten Anfrage ist kein Nachweis eines falschen Passworts.
 
 Die Rückmeldung der Suche steht direkt bei der Geräteauswahl. Falls die Liste leer bleibt, **Diagnose anzeigen** anklicken: HTTP-/API-Codes und anonymisierte Anzahlen unterscheiden Verbindungsfehler, leere Antworten und nicht verwendbare Geräteeinträge. Zugangsdaten, Token und Seriennummern werden dabei nicht ausgegeben. Eine noch fehlende Auswahl wird als Wartezustand angezeigt und löst keine automatische Fehlerabfrageschleife aus.
 
@@ -50,7 +54,7 @@ Für eine lokale Entwicklerinstallation die Bibliothek gemäß der eigenen Symco
 
 ## Weitergabe und Entwicklung
 
-`library.json` muss direkt im Repository-Stamm liegen. Die vorhandenen Bibliotheks- und Modul-GUIDs bei Updates oder der Veröffentlichung neuer Versionen beibehalten. Die MIT-Lizenz und `docs/LICENSE-hass-dreo.txt` bei Weitergabe beilegen. Für eine stabile Veröffentlichung müssen die offenen Prüfungen in `docs/TESTPLAN.md` erfolgreich abgeschlossen und dokumentiert sein.
+`library.json` muss direkt im Repository-Stamm liegen. Die vorhandenen Bibliotheks- und Modul-GUIDs bei Updates oder der Veröffentlichung neuer Versionen beibehalten. Die MIT-Lizenz, `docs/LICENSE-hass-dreo.txt` und `docs/LICENSE-pydreo-client.txt` bei Weitergabe beilegen. Für eine stabile Veröffentlichung müssen die offenen Prüfungen in `docs/TESTPLAN.md` erfolgreich abgeschlossen und dokumentiert sein.
 
 Pro Instanz wird ein Gerät verwaltet. Zugangsdaten und Sitzung sind pro Instanz getrennt. Mehrere gleichzeitige Instanzen und geteilte Dreo-Geräte sind noch nicht praktisch getestet.
 
@@ -62,7 +66,7 @@ Pro Instanz wird ein Gerät verwaltet. Zugangsdaten und Sitzung sind pro Instanz
 
 Bei unklarem Online-Status ist ein manueller Schaltversuch möglich, dessen Ergebnis wiederum bestätigt werden muss. Die Raumtemperatur wird nicht um die Kalibrierung doppelt korrigiert: Beim 720S enthält die gemeldete Temperatur den Offset bereits.
 
-Der Sollwert wird wie in der App auf ganze Fahrenheit aufgerundet. Die Anzeige rechnet dies auf die entsprechende Celsius-Einstellung zurück; z. B. wird eine Einstellung von 21 °C als 70 °F übertragen und als 21 °C angezeigt. Eine gemessene Raumtemperatur von 70 °F wird dagegen als 21,1 °C angezeigt.
+Bei nativen Fahrenheit-Werten wird der Sollwert wie in der App auf ganze Fahrenheit aufgerundet. Meldet die OpenAPI-Modellkonfiguration Celsius, wird der Sollwert in ganzen Celsius übertragen. Die Anzeige rechnet dies auf die entsprechende Celsius-Einstellung zurück; z. B. wird eine Einstellung von 21 °C als 70 °F übertragen und als 21 °C angezeigt. Eine gemessene Raumtemperatur von 70 °F wird dagegen als 21,1 °C angezeigt.
 
 Das Modul bestätigt einen Schaltauftrag erst, wenn die abgefragten Gerätewerte zum Auftrag passen. Diese Rückmeldung stammt weiterhin aus der Cloud, nicht aus einer unabhängigen physikalischen Messung. Bleibt die Bestätigung 60 Sekunden lang aus, wird das angezeigt; das Modul wiederholt den Schaltbefehl nicht automatisch. Änderungen in der Dreo-App werden spätestens bei einer folgenden erfolgreichen Abfrage sichtbar.
 
@@ -82,19 +86,20 @@ Für Automationen `StateValid` und das Alter von `LastUpdateUnix` prüfen. Ein a
 | `DREO_SetTargetTemperature(int InstanceID, float Value): void` | Ganze Grad, 5 bis 35 °C |
 | `DREO_ResetSession(int InstanceID): void` | Token verwerfen; bei aktiver Instanz neue Abfrage anstoßen |
 | `DREO_TestConnection(int InstanceID): string` | Startet einen anonymen Hintergrundtest, liefert sofort den Startstatus; Ergebnisse anschließend über GetDiagnostics |
+| `DREO_GetFormFeedback(int InstanceID): string` | Letzte Formularrückmeldung ohne Netzwerkaufruf lesen |
 | `DREO_GetDiagnostics(int InstanceID): string` | Diagnose-JSON ohne Konto, Passwort, Token oder Seriennummer |
 
 Schaltfunktionen werfen bei ungültigen Werten, gesperrten oder fehlgeschlagenen Aufträgen eine Exception. Die normalen Symcon-Variablenaktionen sind ebenfalls vorhanden. GetDiagnostics liest nur lokale Diagnoseinformationen.
 
 ## Verbindung und Zugangsdaten
 
-Der Status wird über HTTPS gelesen; Befehle werden über eine kurzlebige TLS-WebSocket-Verbindung gesendet. TLS-Zertifikats- und Hostnamenprüfung bleiben eingeschaltet. Das Modul braucht die PHP-Erweiterungen cURL und OpenSSL sowie ausgehenden HTTPS-Zugriff auf die Dreo-Server der Kontoregion.
+Im standardmäßigen OpenAPI-Zugang laufen Anmeldung, Abfragen und Steuerbefehle über HTTPS. Nur die bisherige auswählbare App-API nutzt zum Schalten eine kurzlebige TLS-WebSocket-Verbindung. TLS-Zertifikats- und Hostnamenprüfung bleiben eingeschaltet. Das Modul braucht die PHP-Erweiterungen cURL und OpenSSL sowie ausgehenden HTTPS-Zugriff auf die Dreo-Server der Kontoregion.
 
 Das Passwortfeld ist in der Konsole maskiert. Es ist damit nicht automatisch verschlüsselt gespeichert: Es ist eine normale Symcon-Instanzeigenschaft. Symcon-Administratoren und Sicherungen können Zugangsdaten enthalten. Zugriffstoken liegen im Instanzpuffer; sie werden nicht als Statusvariable veröffentlicht. Eingaben, HTTP-Antworten und WebSocket-Adressen mit Token werden nicht protokolliert.
 
-HTTP 401/403 führt zu höchstens einem erneuten Login pro Operation. Nach fehlgeschlagenen Abfragen steigt die Wartezeit bis auf mindestens fünf Minuten; ein größer gewähltes Abfrageintervall bleibt erhalten. Bei API-Code 100022 werden automatische Anmeldeversuche bis zur manuellen Korrektur oder zum Zurücksetzen gestoppt. Überlappende Operationen derselben Instanz werden gesperrt. Netzwerkoperationen einer Aktion haben zusammen ein Zeitbudget von 22 Sekunden. Ein Verbindungsaufbau erhält höchstens 8 Sekunden, eine einzelne HTTP-Abfrage höchstens 15 Sekunden, jeweils begrenzt durch das verbleibende Budget. Der anonyme Verbindungstest besteht aus zwei getrennten Timer-Schritten von jeweils höchstens 6 Sekunden. Wiederholte Klicks starten innerhalb einer Minute keinen zweiten laufenden Test. Übernehmen einer geänderten Konfiguration bricht wartende Tests ab.
+HTTP 401/403 führt zu höchstens einem erneuten Login pro Operation. Nach fehlgeschlagenen Abfragen steigt die Wartezeit bis auf mindestens fünf Minuten; ein größer gewähltes Abfrageintervall bleibt erhalten. Bei API-Code 100022 werden automatische Anmeldeversuche bis zur manuellen Korrektur oder zum Zurücksetzen gestoppt. Überlappende Operationen derselben Instanz werden gesperrt. Netzwerkoperationen einer Aktion haben zusammen ein Zeitbudget von 22 Sekunden. Ein Verbindungsaufbau erhält höchstens 8 Sekunden, eine einzelne HTTP-Abfrage höchstens 15 Sekunden, jeweils begrenzt durch das verbleibende Budget. Der anonyme Verbindungstest besteht aus zwei getrennten Timer-Schritten von jeweils höchstens 8 Sekunden. Wiederholte Klicks starten innerhalb einer Minute keinen zweiten laufenden Test. Übernehmen einer geänderten Konfiguration bricht wartende Tests ab.
 
-Die Anbindung nutzt die nicht zugesicherte mobile Cloud-API. Dreo kann diese verändern. Eine rein lokale Steuerung ist nicht implementiert. Es werden keine Nutzerdaten an den Modulherausgeber gesendet.
+Der Standardzugang folgt der OpenAPI des Hersteller-Clients; der alternative App-Zugang verwendet die mobile Cloud-API. Dreo kann diese Schnittstellen verändern. Eine rein lokale Steuerung ist nicht implementiert. Es werden keine Nutzerdaten an den Modulherausgeber gesendet.
 
 ## Tests
 
@@ -102,9 +107,11 @@ Die Anbindung nutzt die nicht zugesicherte mobile Cloud-API. Dreo kann diese ver
 php tests/run.php
 php tests/websocket-integration.php
 php tests/http-integration.php
+php tests/openapi.php
+php tests/openapi-wire.php
 ```
 
-Die erste Testsuite nutzt ausschließlich synthetische Antworten und einen SDK-Ersatz. Die zweite startet lokale TCP-WebSocket-Gegenstellen und prüft Handshake, maskierte Client-Rahmen, fragmentierte Antworten, Ping/Pong, Ablehnungen, Antworten für falsche Geräte und Verbindungsabbrüche. Für die lokalen Integrations-Testsuiten wird `pcntl` benötigt, für den Modulbetrieb nicht. `tests/http-integration.php` verwendet zusätzlich echtes cURL gegen lokale Gegenstellen für einen erzwungenen Timeout und einen anonymen IPv4-Test. Die lokale Gegenstelle ersetzt nur in den Tests TLS; im Modulbetrieb bleibt TLS zwingend aktiv.
+Die erste Testsuite nutzt ausschließlich synthetische Antworten und einen SDK-Ersatz. Die zweite startet lokale TCP-WebSocket-Gegenstellen und prüft Handshake, maskierte Client-Rahmen, fragmentierte Antworten, Ping/Pong, Ablehnungen, Antworten für falsche Geräte und Verbindungsabbrüche. Für die lokalen Integrations-Testsuiten wird `pcntl` benötigt, für den Modulbetrieb nicht. `tests/http-integration.php` verwendet zusätzlich echtes cURL gegen lokale Gegenstellen für einen erzwungenen Timeout und einen anonymen IPv4-Test. Die lokale Gegenstelle ersetzt nur in den Tests TLS; im Modulbetrieb bleibt TLS zwingend aktiv. `openapi.php` prüft Anmeldung, Tokenregion, Modellkonfiguration, Geräte-/Statuszuordnung und den vollständigen Modulablauf mit ersetztem Transport. `openapi-wire.php` sendet vier echte cURL-Anfragen an einen lokalen Server und vergleicht sie mit Anfragen des originalen Python-CloudTransport. Es werden keine realen Zugangsdaten oder Heizgeräte verwendet.
 
 GitHub Actions führt die Tests bei Pushes und Pull Requests unter PHP 8.2, 8.3 und 8.4 aus. Den tatsächlichen Status zeigt der Actions-Reiter des Repositories. Lokal durchgeführt wurde der Test mit PHP 8.3.6; reale Kernel- und Gerätetests bleiben davon getrennt.
 

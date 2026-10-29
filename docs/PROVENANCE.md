@@ -1,5 +1,23 @@
 # Protokollherkunft
 
+Seit 0.1.0-beta.6 ist standardmäßig der OpenAPI-Zugang aus dem Herstellerprojekt aktiv:
+https://github.com/dreo-team/pydreo-client/tree/5e4fa54abe795a557e95e2537b7573656a9e9ab7
+
+Gelesene und gegen den festen Commit geprüfte Dateien (lokale Kopien unterscheiden sich lediglich in abschließenden Leerzeilen):
+- pydreo/cloud/auth.py: 2b7d38f3884a249d2e595aadb963307e39f6bffa
+- pydreo/cloud/const.py: 685db7b1a6bcd8e8f36e0205c30ddca166c2311f
+- pydreo/cloud/transport.py: 9a1c1f58ed281c97cb489351ca7aeaf31aa91e9b
+
+Der originale Python-CloudTransport wurde mit einer aufzeichnenden Session, synthetischen Zugangsdaten und einem Ersatz für die requests-Exceptiontypen ausgeführt. Dabei fand kein öffentlicher Netzwerkzugriff statt. Vier resultierende Anfragen ohne variablen Zeitstempel liegen in tests/fixtures/openapi-sdk.json. Der Test openapi-wire.php vergleicht echte PHP-cURL-Anfragen an eine lokale Gegenstelle mit diesen aufgezeichneten Anfragen: Produktions-URL, Methode, Query-Parameter, Protokollheader und JSON-Inhalt. Das prüft die Übereinstimmung mit dem SDK, nicht dessen Akzeptanz durch ein reales Konto.
+
+Anmeldung erfolgt wie im SDK zuerst über open-api-us, danach bestimmt der Token-Suffix EU oder NA den Server. Der Suffix wird vor Verwendung als Bearer entfernt. Unbekannte Suffixe lehnt diese Implementierung ab; der SDK würde dort NA annehmen. Die Konsole erwartet das echte Klartextpasswort und hasht es immer. Die historische SDK-Ausnahme für bereits als MD5 eingegebene Werte wird bewusst nicht übernommen, damit ein echtes Passwort aus 32 Hex-Zeichen ebenfalls korrekt behandelt wird.
+
+Heizgeräte-Felder und das Schema der vom Server gelieferten Modellkonfiguration wurden zusätzlich in https://github.com/dreo-team/hass-dreoverse gelesen: const.py, climate.py, coordinator.py und entity.py. Insbesondere power_switch, hvacmode, ecolevel und heater_entity_config stammen daraus. Konkrete Konfigurationswerte eines echten DR-HSH040S liegen noch nicht vor. Die Tests verwenden dafür ausdrücklich synthetische Konfigurationen. Fehlende Temperatureinheit und mehrdeutige Moduszuordnungen werden deshalb nicht geraten.
+
+Lizenz des Hersteller-Clients: docs/LICENSE-pydreo-client.txt, Copyright 2025 Dreo Team, MIT. Es wird keine offizielle Unterstützung oder Prüfung dieses Symcon-Moduls durch Dreo behauptet. Der im SDK vorbereitete lokale Provider enthält keine nutzbare echte LAN-Anbindung.
+
+## Bisherige App-API als auswählbare Alternative
+
 Die eigenständige PHP-Implementierung orientiert sich an öffentlich dokumentiertem Verhalten der MIT-lizenzierten Community-Integration hass-dreo. Die Bibliothek benötigt deren Python-Code nicht zur Laufzeit.
 
 Referenz: https://github.com/JeffSteinbok/hass-dreo

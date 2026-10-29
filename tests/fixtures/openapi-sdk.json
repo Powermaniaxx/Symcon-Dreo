@@ -1,0 +1,71 @@
+{
+    "source": "dreo-team/pydreo-client",
+    "commit": "5e4fa54abe795a557e95e2537b7573656a9e9ab7",
+    "method": "Unmodified CloudTransport executed with recording session and requests exception shim; synthetic credentials; timestamp omitted.",
+    "requests": [
+        {
+            "method": "POST",
+            "url": "https://open-api-us.dreo-tech.com/api/oauth/login",
+            "headers": {
+                "Content-Type": "application/json",
+                "UA": "openapi/1.0.0"
+            },
+            "params": {
+                "dreover": "1.0.0"
+            },
+            "json": {
+                "client_id": "89ef537b2202481aaaf9077068bcb0c9",
+                "client_secret": "41b20a1f60e9499e89c8646c31f93ea1",
+                "grant_type": "openapi",
+                "scope": "all",
+                "email": "fixture@example.invalid",
+                "password": "c8bb92c7cea0c507b569cf2ddc73896c"
+            }
+        },
+        {
+            "method": "GET",
+            "url": "https://open-api-eu.dreo-tech.com/api/v2/device/list",
+            "headers": {
+                "Content-Type": "application/json",
+                "UA": "openapi/1.0.0",
+                "Authorization": "Bearer fixture-token"
+            },
+            "params": {
+                "dreover": "1.0.0"
+            },
+            "json": null
+        },
+        {
+            "method": "GET",
+            "url": "https://open-api-eu.dreo-tech.com/api/v2/device/state",
+            "headers": {
+                "Content-Type": "application/json",
+                "UA": "openapi/1.0.0",
+                "Authorization": "Bearer fixture-token"
+            },
+            "params": {
+                "dreover": "1.0.0",
+                "deviceSn": "fixture-sn"
+            },
+            "json": null
+        },
+        {
+            "method": "POST",
+            "url": "https://open-api-eu.dreo-tech.com/api/v2/device/control",
+            "headers": {
+                "Content-Type": "application/json",
+                "UA": "openapi/1.0.0",
+                "Authorization": "Bearer fixture-token"
+            },
+            "params": {
+                "dreover": "1.0.0"
+            },
+            "json": {
+                "devicesn": "fixture-sn",
+                "desired": {
+                    "power_switch": false
+                }
+            }
+        }
+    ]
+}

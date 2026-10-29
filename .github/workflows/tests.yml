@@ -22,3 +22,5 @@ jobs:
       - run: php tests/run.php
       - run: php tests/websocket-integration.php
       - run: php tests/http-integration.php
+      - run: php tests/openapi.php
+      - run: php tests/openapi-wire.php

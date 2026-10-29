@@ -17,6 +17,7 @@ class DreoHeater extends IPSModuleStrict
         $this->RegisterPropertyString('Email', '');
         $this->RegisterPropertyString('Password', '');
         $this->RegisterPropertyString('Region', 'EU');
+        $this->RegisterPropertyString('CloudAPI', 'openapi');
         $this->RegisterPropertyString('Serial', '');
         $this->RegisterPropertyInteger('Interval', 30);
         $this->RegisterAttributeString('Devices', '[]');
@@ -31,6 +32,7 @@ class DreoHeater extends IPSModuleStrict
         $this->RegisterVariableFloat('CurrentTemperature', 'Raumtemperatur', ['PRESENTATION' => VARIABLE_PRESENTATION_VALUE_PRESENTATION,
             'SUFFIX' => ' °C', 'DIGITS' => 1], 50);
         $this->RegisterVariableBoolean('Heating', 'Heizelement aktiv', [], 60);
+        $this->RegisterVariableBoolean('HeatingKnown', 'Heizstatus geliefert', [], 65);
         $this->RegisterVariableBoolean('Online', 'Online ausdrücklich bestätigt', [], 70);
         $this->RegisterVariableString('Availability', 'Verbindungsstatus', [], 75);
         $this->RegisterVariableBoolean('StateValid', 'Status gültig', [], 80);
@@ -63,6 +65,7 @@ class DreoHeater extends IPSModuleStrict
         $this->SetBuffer('Failures', '0');
         $this->SetBuffer('VerifiedSerial', '');
         $this->SetValue('StateValid', false);
+        $this->SetValue('HeatingKnown', false);
         $this->SetValue('Online', false);
         $this->SetValue('Availability', 'Noch keine aktuelle Statusabfrage');
         $this->actions(false);
@@ -143,16 +146,13 @@ class DreoHeater extends IPSModuleStrict
                 $this->recordFormAction('ResetSession');
                 $this->ResetSession();
                 $this->feedback('Sitzung zurückgesetzt.');
-                echo 'Sitzung zurückgesetzt.';
                 return;
             case 'FormDiagnostics':
                 $this->recordFormAction('GetDiagnostics');
-                echo $this->GetDiagnostics();
                 return;
             case 'FormTestConnection':
                 $this->recordFormAction('TestConnection');
                 $this->TestConnection();
-                echo 'Klick empfangen. Verbindungstest angefordert. Ergebnis im Formular und unter Diagnose anzeigen.';
                 return;
             case 'TestConnection': $this->TestConnection(); return;
             case 'RunConnectionTest': $this->connectionTestStep(); return;
@@ -191,6 +191,7 @@ class DreoHeater extends IPSModuleStrict
         $this->SetBuffer('VerifiedSerial', '');
         $this->SetBuffer('Failures', '0');
         $this->SetValue('StateValid', false);
+        $this->SetValue('HeatingKnown', false);
         $this->SetValue('Online', false);
         $this->SetValue('Availability', 'Sitzung zurückgesetzt; Status noch unbekannt');
         $this->actions(false);
@@ -200,8 +201,9 @@ class DreoHeater extends IPSModuleStrict
     public function GetDiagnostics(): string
     {
         // Deliberate allowlist: no account name, serial, password, bearer token or raw API data.
-        return json_encode(['module' => 'SymconDreo', 'version' => '0.1.0-beta.5', 'model' => Protocol::MODEL,
+        return json_encode(['module' => 'SymconDreo', 'version' => '0.1.0-beta.6', 'model' => Protocol::MODEL,
             'region' => $this->ReadPropertyString('Region'), 'active' => $this->ReadPropertyBoolean('Open'),
+            'cloudAPI' => $this->ReadPropertyString('CloudAPI'),
             'stateValid' => $this->GetValue('StateValid'), 'lastUpdateUtc' => $this->GetValue('LastUpdate'),
             'lastError' => $this->GetValue('LastError'),
             'discovery' => json_decode($this->GetBuffer('DiscoveryDiagnostics'), true) ?? [],
@@ -214,6 +216,11 @@ class DreoHeater extends IPSModuleStrict
             JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
     }
 
+    public function GetFormFeedback(): string
+    {
+        return $this->GetBuffer('SearchFeedback');
+    }
+
     private function recordFormAction(string $action): void
     {
         $this->SetBuffer('LastFormAction', json_encode(['action' => $action, 'receivedAtUtc' => gmdate('Y-m-d H:i:s') . ' UTC'], JSON_THROW_ON_ERROR));
@@ -223,13 +230,12 @@ class DreoHeater extends IPSModuleStrict
     {
         $this->recordFormAction($action);
         if ($this->GetBuffer('QueuedFormAction') !== '') {
-            echo 'Eine Formularaktion wartet bereits. Ergebnis im Formular prüfen.';
+            $this->feedback('Eine Formularaktion wartet bereits. Ergebnis im Formular prüfen.');
             return;
         }
         $this->SetBuffer('QueuedFormAction', $action);
         $this->feedback('Klick empfangen. ' . ($action === 'DiscoverDevices' ? 'Gerätesuche' : 'Statusabfrage') . ' startet im Hintergrund …');
         $this->SetTimerInterval('FormAction', 1000);
-        echo 'Klick empfangen. Auftrag gestartet. Ergebnis erscheint im Formular; bei Zeitüberschreitung unter Diagnose anzeigen nachsehen.';
     }
 
     private function runFormAction(): void
@@ -261,7 +267,7 @@ class DreoHeater extends IPSModuleStrict
             $this->networkFeedback('Verbindungstest läuft bereits. Ergebnisse folgen im Formular.');
             return json_encode($existing, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
         }
-        $results = ['status' => 'running', 'region' => $region, 'startedAtUnix' => time(),
+        $results = ['status' => 'running', 'region' => $region, 'cloudAPI' => $this->ReadPropertyString('CloudAPI'), 'startedAtUnix' => time(),
             'startedAtUtc' => gmdate('Y-m-d H:i:s') . ' UTC', 'next' => 'auto',
             'note' => 'GET ohne Konto oder Token. Ein HTTP-Fehler kann Erreichbarkeit bestätigen; dies prüft keine Anmeldung.'];
         $json = json_encode($results, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
@@ -306,7 +312,7 @@ class DreoHeater extends IPSModuleStrict
 
     protected function newProbeClient(string $region, string $mode): Client
     {
-        return new Client($region, '', null, 6.0, $mode);
+        return new Client($region, '', $this->httpTransport(), 8.0, $mode, $this->ReadPropertyString('CloudAPI'));
     }
 
     private function networkFeedback(string $message): void
@@ -327,12 +333,19 @@ class DreoHeater extends IPSModuleStrict
 
     protected function newClient(string $region, string $token): Client
     {
-        return new Client($region, $token, null, max(0, $this->operationDeadline - microtime(true)));
+        $config = [];
+        foreach (json_decode($this->ReadAttributeString('Devices'), true) ?? [] as $device) {
+            if ($device['serial'] === $this->ReadPropertyString('Serial')) { $config = $device['heaterConfig'] ?? []; break; }
+        }
+        return new Client($region, $token, $this->httpTransport(), max(0, $this->operationDeadline - microtime(true)), 'auto', $this->ReadPropertyString('CloudAPI'), $config);
     }
+
+    protected function httpTransport(): ?Closure { return null; }
 
     private function authenticated(Closure $operation): mixed
     {
         $session = json_decode($this->GetBuffer('Session'), true) ?? [];
+        if (($session['apiMode'] ?? '') !== $this->ReadPropertyString('CloudAPI')) { $session = []; }
         $client = $this->newClient($session['region'] ?? $this->ReadPropertyString('Region'), $session['token'] ?? '');
         try {
             if (empty($session['token'])) { $client->login(trim($this->ReadPropertyString('Email')), $this->ReadPropertyString('Password')); }
@@ -382,7 +395,7 @@ class DreoHeater extends IPSModuleStrict
                 throw new RuntimeException('Gerätestatus enthält keinen gültigen Wert für ' . $key . '.');
             }
         }
-        if (!isset($state['ptcon']) || !in_array($state['ptcon'], [true, false, 0, 1], true)) {
+        if ($this->ReadPropertyString('CloudAPI') === 'app' && (!isset($state['ptcon']) || !in_array($state['ptcon'], [true, false, 0, 1], true))) {
             throw new RuntimeException('Gerätestatus enthält keinen gültigen Heizstatus.');
         }
         if ((bool) $state['poweron'] && !in_array($state['mode'] ?? null, Protocol::MODES, true)) {
@@ -402,6 +415,7 @@ class DreoHeater extends IPSModuleStrict
         if (isset($state['ptcon']) && in_array($state['ptcon'], [true, false, 0, 1], true)) {
             $this->SetValue('Heating', (bool) $state['ptcon']);
         }
+        $this->SetValue('HeatingKnown', isset($state['ptcon']) && in_array($state['ptcon'], [true, false, 0, 1], true));
         $online = isset($state['connected']) && in_array($state['connected'], [true, 1], true);
         $offline = isset($state['connected']) && in_array($state['connected'], [false, 0], true);
         $this->SetValue('Online', $online);
@@ -423,7 +437,10 @@ class DreoHeater extends IPSModuleStrict
             }
         }
         $map = ['Power' => 'poweron', 'Mode' => 'mode', 'HeatLevel' => 'htalevel', 'TargetTemperature' => 'ecolevel'];
-        foreach ($map as $ident => $key) { $this->MaintainAction($ident, !$offline && isset($state[$key])); }
+        foreach ($map as $ident => $key) {
+            $writable = $ident !== 'Mode' || $this->ReadPropertyString('CloudAPI') !== 'openapi' || ($state['_modeWritable'] ?? false);
+            $this->MaintainAction($ident, !$offline && isset($state[$key]) && $writable);
+        }
         $this->SetStatus($offline ? 204 : 102);
         $this->feedback('Gerätestatus erfolgreich aktualisiert.');
         $this->SetTimerInterval('Refresh', $this->interval() * 1000);
@@ -435,6 +452,7 @@ class DreoHeater extends IPSModuleStrict
             throw new RuntimeException('Dreo-E-Mail und Passwort eintragen und Änderungen übernehmen.');
         }
         if (!in_array($this->ReadPropertyString('Region'), ['EU', 'NA'], true)) { throw new RuntimeException('Region EU oder NA wählen.'); }
+        if (!in_array($this->ReadPropertyString('CloudAPI'), ['openapi', 'app'], true)) { throw new RuntimeException('Cloud-API auswählen.'); }
         if ($requireSerial && $this->ReadPropertyString('Serial') === '') { throw new RuntimeException('Geräte suchen, einen 720S auswählen und Änderungen übernehmen.'); }
         if ($this->ReadPropertyInteger('Interval') < 30 || $this->ReadPropertyInteger('Interval') > 3600) {
             throw new RuntimeException('Abfrageintervall: 30 bis 3600 Sekunden.');
@@ -455,6 +473,7 @@ class DreoHeater extends IPSModuleStrict
         try { return $operation(); }
         catch (Throwable $e) {
             $this->SetValue('StateValid', false);
+            $this->SetValue('HeatingKnown', false);
             $this->SetValue('Online', false);
             $this->SetValue('Availability', 'Unbekannt; letzte Abfrage fehlgeschlagen');
             $this->actions(false);

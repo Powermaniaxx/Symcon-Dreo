@@ -16,8 +16,10 @@ class Client
     private ?\Closure $http;
     private array $diagnostics = [];
     private string $addressFamily;
+    private string $apiMode;
+    private array $heaterConfig;
 
-    public function __construct(string $region, string $token = '', ?\Closure $http = null, float $budget = 22.0, string $addressFamily = 'auto')
+    public function __construct(string $region, string $token = '', ?\Closure $http = null, float $budget = 22.0, string $addressFamily = 'auto', string $apiMode = 'app', array $heaterConfig = [])
     {
         if (!in_array($region, ['EU', 'NA'], true)) { throw new \InvalidArgumentException('Ungültige Region.'); }
         $this->region = $region;
@@ -25,24 +27,48 @@ class Client
         $this->http = $http;
         if (!in_array($addressFamily, ['auto', 'ipv4'], true)) { throw new \InvalidArgumentException('Ungültiger Verbindungsmodus.'); }
         $this->addressFamily = $addressFamily;
+        if (!in_array($apiMode, ['app', 'openapi'], true)) { throw new \InvalidArgumentException('Ungültige Cloud-API.'); }
+        $this->apiMode = $apiMode;
+        $this->heaterConfig = $heaterConfig;
         $this->deadline = microtime(true) + max(0, min(22.0, $budget));
     }
 
-    public function session(): array { return ['region' => $this->region, 'token' => $this->token]; }
+    public function session(): array { return ['region' => $this->region, 'token' => $this->token, 'apiMode' => $this->apiMode]; }
     public function diagnostics(): array { return $this->diagnostics; }
 
     public function probe(): array
     {
         if ($this->token !== '') { throw new \LogicException('Verbindungstest darf kein Zugriffstoken verwenden.'); }
-        try { $this->api('/api/oauth/login', 'GET', []); }
+        try { $this->api('/api/oauth/login', 'GET', [], $this->apiMode === 'openapi' ? 'NA' : null); }
         catch (ApiException $e) { $this->diagnostics['probeResult'] = $e->getMessage(); }
         // HTTP 4xx/5xx can still prove connectivity. This is not a credential/login test.
+        $status = (int) ($this->diagnostics['requests'][0]['httpStatus'] ?? 0);
+        $this->diagnostics['httpResponseReceived'] = $status >= 100 && $status <= 599;
+        $this->diagnostics['loginTested'] = false;
+        if ($this->diagnostics['httpResponseReceived']) {
+            $this->diagnostics['probeResult'] = 'HTTP-Antwort empfangen; Server erreichbar. Anmeldung nicht geprüft.';
+        }
         return $this->diagnostics;
     }
 
     public function login(string $email, string $password): void
     {
         $this->token = '';
+        if ($this->apiMode === 'openapi') {
+            // The official SDK logs in on US, then chooses the region from the token suffix.
+            $data = $this->api('/api/oauth/login', 'POST', Protocol::openLoginBody($email, $password), 'NA');
+            $token = $data['access_token'] ?? $data['token'] ?? '';
+            if (!is_string($token) || $token === '' || preg_match('/[\x00-\x20\x7f]/', $token)) {
+                throw new ApiException('Anmeldung: kein gültiges Zugriffstoken.');
+            }
+            [$clean, $suffix] = array_pad(explode(':', $token, 2), 2, 'NA');
+            if ($clean === '' || !in_array(strtoupper($suffix), ['EU', 'NA'], true)) {
+                throw new ApiException('Anmeldung: unbekannte Tokenregion.');
+            }
+            $this->region = strtoupper($suffix);
+            $this->token = $clean;
+            return;
+        }
         for ($attempt = 0; $attempt < 2; ++$attempt) {
             $data = $this->api('/api/oauth/login', 'POST', Protocol::loginBody($email, $password));
             $region = strtoupper((string) ($data['region'] ?? ''));
@@ -60,6 +86,12 @@ class Client
 
     public function discover(): array
     {
+        if ($this->apiMode === 'openapi') {
+            $path = '/api/v2/device/list';
+            $data = $this->api($path, 'GET', []);
+            $this->diagnostics['discovery'][] = ['path' => $path, 'counts' => Protocol::discoveryStats($data)];
+            return Protocol::devices($data);
+        }
         $found = [];
         // Both routes are required: some EU accounts only return devices via the family route.
         foreach (['/api/app/index/family/room/devices', '/api/v2/user-device/device/list'] as $path) {
@@ -84,32 +116,52 @@ class Client
 
     public function state(string $serial): array
     {
+        if ($this->apiMode === 'openapi') {
+            $data = $this->api('/api/v2/device/state', 'GET', ['deviceSn' => $serial]);
+            $this->diagnostics['stateKeys'] = array_keys($data);
+            $unit = $this->heaterConfig['temperature_unit'] ?? null;
+            $this->diagnostics['modelConfiguration'] = [
+                'temperatureUnit' => in_array($unit, ['celsius', 'fahrenheit'], true) ? $unit : null,
+                'hasTemperatureRange' => is_array($this->heaterConfig['temperature_range'] ?? null),
+                'modeMappingCount' => is_array($this->heaterConfig['hvac_mode_relate_map'] ?? null) ? count($this->heaterConfig['hvac_mode_relate_map']) : 0,
+            ];
+            return Protocol::openState($data, $this->heaterConfig);
+        }
         return Protocol::unwrap($this->api('/api/user-device/device/state', 'GET', ['deviceSn' => $serial]));
     }
 
     public function send(string $serial, array $params): string
     {
+        if ($this->apiMode === 'openapi') {
+            $desired = Protocol::openCommand($params, $this->heaterConfig);
+            $data = $this->api('/api/v2/device/control', 'POST', ['devicesn' => $serial, 'desired' => $desired]);
+            if (($data['accepted'] ?? null) === false) { throw new ApiException('Dreo hat den Schaltauftrag abgelehnt.'); }
+            return 'http-accepted';
+        }
         $remaining = $this->deadline - microtime(true);
         if ($remaining < 2) { throw new ApiException('Zeitbudget erschöpft; kein Schaltbefehl gesendet.'); }
         return (new WebSocket())->send($this->region === 'EU' ? 'eu' : 'us', $this->token, $serial, $params, min(8.0, $remaining));
     }
 
-    private function api(string $path, string $method, array $body): array
+    private function api(string $path, string $method, array $body, ?string $regionOverride = null): array
     {
         $requestIndex = count($this->diagnostics['requests'] ?? []);
-        $this->diagnostics['requests'][] = ['path' => $path, 'httpStatus' => null, 'apiCode' => null];
+        $this->diagnostics['requests'][] = ['path' => $path, 'apiMode' => $this->apiMode, 'serverRegion' => $regionOverride ?? $this->region, 'httpStatus' => null, 'apiCode' => null];
         $remaining = $this->deadline - microtime(true);
         if ($remaining < 0.5) { throw new ApiException('Zeitlimit der Dreo-Abfrage erreicht.'); }
         $connectTimeout = min(8000, (int) ($remaining * 1000));
         $timeout = min(15000, (int) ($remaining * 1000));
         $this->diagnostics['requests'][$requestIndex] += ['connectTimeoutMs' => $connectTimeout,
             'timeoutMs' => $timeout, 'addressFamily' => $this->addressFamily];
-        $host = 'https://app-api-' . ($this->region === 'EU' ? 'eu' : 'us') . '.dreo-tech.com';
+        $host = 'https://' . ($this->apiMode === 'openapi' ? 'open-api-' : 'app-api-')
+            . (($regionOverride ?? $this->region) === 'EU' ? 'eu' : 'us') . '.dreo-tech.com';
         $query = ['timestamp' => (string) (int) floor(microtime(true) * 1000)];
+        if ($this->apiMode === 'openapi') { $query['dreover'] = '1.0.0'; }
         if ($method === 'GET') { $query = array_merge($body, $query); }
         $url = $host . $path . '?' . http_build_query($query, '', '&', PHP_QUERY_RFC3986);
         $headers = ['ua: dreo/2.8.2', 'lang: en', 'Content-Type: application/json; charset=UTF-8',
             'User-Agent: okhttp/4.9.1'];
+        if ($this->apiMode === 'openapi') { $headers = ['UA: openapi/1.0.0', 'Content-Type: application/json']; }
         if ($this->token !== '') { $headers[] = 'Authorization: Bearer ' . $this->token; }
         if ($this->http !== null) {
             [$status, $raw] = ($this->http)($url, $method, $headers, $body);
@@ -151,6 +203,7 @@ class Client
             $code = is_numeric($response['code']) ? (int) $response['code'] : -1;
             throw new ApiException($code === 100022 ? 'Dreo-Anmeldung abgelehnt: Konto oder Passwort prüfen.' : 'Dreo-API meldet Fehlercode ' . $code . '.', $code);
         }
+        if ($this->apiMode === 'openapi' && $path === '/api/v2/device/control' && !isset($response['data'])) { return []; }
         if (!isset($response['data']) || !is_array($response['data'])) { throw new ApiException('Dreo-Antwort enthält keine auswertbaren Daten.'); }
         return $response['data'];
     }

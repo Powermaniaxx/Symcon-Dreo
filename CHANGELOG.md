@@ -1,5 +1,18 @@
 # Änderungen
 
+## 0.1.0-beta.6 – 30.10.2026
+
+- OpenAPI aus dem Herstellerprojekt pydreo-client ist der neue Standard: Login am US-Endpunkt, Regionswahl aus Token-Suffix, neue Clientkennung, grant_type openapi und dreover 1.0.0.
+- Offizielle v2-Geräteliste, v2-Status und HTTP-Steuerung mit desired-Objekt. Der bisherige App-Zugang bleibt auswählbar; Sitzungen werden nach Verfahren getrennt.
+- Modellkonfiguration für Temperatureinheit, Sollwertgrenzen und Betriebsart wird ausgewertet. Fehlende Einheit, mehrdeutige Modi und unbekannte Zusatzbefehle werden nicht geraten. Moduswechsel übernimmt keine impliziten Einschaltbefehle aus der Konfiguration.
+- Nur tatsächliche Statusdaten dürfen Befehle bestätigen; desired-Werte allein reichen nicht. Fehlendes ptcon wird über HeatingKnown=false kenntlich gemacht.
+- Zusätzliche OpenAPI- und Modulablauftests sowie vier native cURL-Anfragen gegen die aus dem originalen Python-SDK aufgezeichnete Referenz. Konkrete 720S-Metadaten bleiben real zu prüfen.
+
+- Interne Formularaktionen geben keinen Text mehr aus. Der onClick-Aufrufer liest die Rückmeldung anschließend als Rückgabewert und zeigt sie selbst an. Dies trennt Aktion und Dialogausgabe nach der beobachteten Kombination aus ausgeführtem Aufruf und Symcon-Fehlermeldung.
+- Diagnose wird direkt als Zeichenfolge abgerufen; kein JSON-echo innerhalb von IPS_RequestAction.
+- Der anonyme Netzwerktest kennzeichnet erhaltene HTTP-Antworten als Erreichbarkeitsnachweis und meldet ausdrücklich, dass keine Anmeldung getestet wurde. API-Code 100000 bleibt in der Diagnose erhalten.
+- Nutzertest mit beta.5: Formularaktionen und erster Timer-Aufruf wurden ausgeführt; Dreo antwortete mit HTTP 200/cURL 0. DNS benötigte etwa fünf Sekunden. Anmeldung und Geräteabfrage sind dadurch noch nicht bestätigt.
+
 ## 0.1.0-beta.5 – 29.10.2026
 
 - Eigenständiger Oberfläche-testen-Knopf bestätigt einen Klick ohne Modulaufruf oder Netzwerk.
