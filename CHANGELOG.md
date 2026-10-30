@@ -1,5 +1,13 @@
 # Änderungen
 
+## 1.0.0 – 30.10.2026
+
+- Erste regulär versionierte Projektfreigabe für Dreo 720S / DR-HSH040S ab Symcon 9.0, auf Basis des zuletzt getesteten App-API-Zugangs. Eine Store-Veröffentlichung erfolgt erst nach Einreichung und Prüfung durch Symcon.
+- Deutsche Einrichtung und Dokumentation für Dritte, vorbereitete Store-Texte und separates Modulhandbuch.
+- Anmeldung, Erkennung, Statuslesen und grundlegendes Schalten wurden am echten EU-Gerät bestätigt; die Rückmeldung zur Reaktion nach beta.9 ist positiv. Separate reale Prüfungen der Betriebsarten, Heizstufen und Solltemperaturen bleiben im Prüfprotokoll offen.
+- Kompatibilitätsprüfungen bis PHP 8.5 und zusätzliche Validierung mit dem offiziellen Symcon-Validator. Der unter PHP 8.5 veraltete curl_close-Aufruf entfällt; CurlHandle wird über seine Lebensdauer freigegeben.
+- Bibliotheks- und Modul-GUID sowie Eigenschaften, Variablen-Idents und öffentliche DREO-Funktionen bleiben erhalten.
+
 ## 0.1.0-beta.9 – 30.10.2026
 
 - Der Klick führt den Versand direkt aus und wartet anschließend nicht mehr auf die zusätzliche HTTP-Statusabfrage. Die Gerätebestätigung wird separat nachgeholt; keine optimistische Erfolgsmeldung.

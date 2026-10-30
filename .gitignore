@@ -5,3 +5,5 @@
 *.local.php
 coverage/
 .phpunit.cache/
+
+.symcon-stubs/

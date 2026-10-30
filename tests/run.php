@@ -340,7 +340,7 @@ function clickButton(TestHeater $instance, string $caption): string {
     finally { ob_end_clean(); }
 }
 $ui = heater();
-check(str_contains(clickButton($ui, 'Oberfläche testen'), '0.1.0-beta.9: Klick empfangen. Instanz 101'), 'pure console callback immediately prints version and instance');
+check(str_contains(clickButton($ui, 'Oberfläche testen'), '1.0.0: Klick empfangen. Instanz 101'), 'pure console callback immediately prints version and instance');
 check(str_contains(clickButton($ui, 'Geräte suchen'), 'Klick empfangen'), 'actual search callback acknowledges before network work');
 check($ui->timers['FormAction'] === 1000 && $ui->attributes['Devices'] === '[]', 'search waits for background timer');
 check(str_contains(clickButton($ui, 'Status aktualisieren'), 'wartet bereits'), 'second form job does not replace queued search');
@@ -362,7 +362,7 @@ $rejectedUi = heater();
 check(str_contains(clickButton($rejectedUi, 'Geräte suchen'), 'Symcon meldet einen Aufruffehler')
     && $rejectedUi->timers['FormAction'] === 0, 'rejected kernel call reports failure without claiming a queued search');
 $GLOBALS['callbackReject'] = false;
-check(json_decode(clickButton($rejectedUi, 'Diagnose anzeigen'), true)['version'] === '0.1.0-beta.9', 'diagnostics returns JSON directly without action output');
+check(json_decode(clickButton($rejectedUi, 'Diagnose anzeigen'), true)['version'] === '1.0.0', 'diagnostics returns JSON directly without action output');
 $ui = heater(); clickButton($ui, 'Geräte suchen'); $ui->ApplyChanges(); $ui->RequestAction('RunFormAction', true);
 check($ui->attributes['Devices'] === '[]' && $ui->timers['FormAction'] === 0, 'apply cancels waiting form work');
 $ui = new TestHeater(); clickButton($ui, 'Status aktualisieren'); $ui->RequestAction('RunFormAction', true);

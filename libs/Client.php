@@ -202,7 +202,7 @@ class Client
                     throw new ApiException('Dreo-Verbindung fehlgeschlagen (cURL ' . $curlCode .
                         ($stats['totalMs'] !== null ? ', nach ' . round($stats['totalMs'] / 1000, 1) . ' s' : '') . ').');
                 }
-            } finally { curl_close($ch); }
+            } finally { unset($ch); }
         }
         $this->diagnostics['requests'][$requestIndex]['httpStatus'] = (int) $status;
         if ($status !== 200) { throw new ApiException('Dreo antwortet mit HTTP ' . $status . '.', (int) $status); }

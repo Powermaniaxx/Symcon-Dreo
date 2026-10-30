@@ -6,4 +6,4 @@ Das Modul legt keine geheimen Nutzerwerte in öffentlichen Dateien oder Statusva
 
 Eine Schwachstelle nicht mit echten Zugangsdaten in einem öffentlichen Issue belegen. Sensible Details nur über einen vom Herausgeber bestätigten privaten Meldeweg austauschen. Ist kein solcher Weg angegeben, zunächst ausschließlich mit synthetischen Beispielen und ohne Kontodaten Kontakt aufnehmen. Repository: https://github.com/Powermaniaxx/Symcon-Dreo.
 
-Unterstützter Entwicklungsstand ist zunächst nur 0.1.0-beta.9. Es gibt noch keine Wartungs- oder Kompatibilitätszusage für die Vorabversion.
+Aktueller Projektstand ist 1.0.0. Der Betrieb benötigt Symcon 9.0 oder neuer und ein eigenes Dreo-Konto. Die Cloud-Schnittstelle kann sich außerhalb des Einflusses dieses Projekts ändern. Eine Freigabe im Symcon Module Store ist von der Projektversion getrennt und erfordert die dortige Einreichung und Prüfung.

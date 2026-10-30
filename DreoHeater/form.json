@@ -2,7 +2,7 @@
     "elements": [
         {
             "type": "Label",
-            "caption": "Symcon Dreo 0.1.0-beta.9 – Vorabversion. Gerätesuche und Steuerung sind noch in Erprobung."
+            "caption": "Dreo 720S · Version 1.0.0"
         },
         {
             "type": "Label",
@@ -40,7 +40,7 @@
         },
         {
             "type": "Label",
-            "caption": "Beim 720S sind Anmeldung, Gerätesuche und Statuslesen über die App-API am echten Gerät bestätigt. Schaltbefehle sind noch zu prüfen. OpenAPI blieb im bisherigen Nutzertest bei HTTP 302 im Login stehen."
+            "caption": "Beim 720S sind App-API-Anmeldung, Erkennung, Statuslesen und grundlegendes Ein/Aus am EU-Gerät bestätigt. OpenAPI bleibt experimentell; dort scheiterte der bisherige Login mit HTTP 302."
         },
         {
             "type": "Select",
@@ -89,7 +89,7 @@
             "type": "Button",
             "caption": "Oberfläche testen",
             "link": false,
-            "onClick": "echo \"Oberfläche 0.1.0-beta.9: Klick empfangen. Instanz \" . $id; "
+            "onClick": "echo \"Oberfläche 1.0.0: Klick empfangen. Instanz \" . $id; "
         },
         {
             "type": "Button",

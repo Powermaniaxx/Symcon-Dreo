@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        php: ['8.2', '8.3', '8.4']
+        php: ['8.2', '8.3', '8.4', '8.5']
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
@@ -26,3 +26,21 @@ jobs:
       - run: php tests/openapi-wire.php
       - run: php tests/endpoints.php
       - run: php tests/tls-endpoint.php
+  symcon-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: symcon/SymconStubs
+          ref: 31f2e0478eb3763236fcf44ea4144271fdeddfd5
+          path: .symcon-stubs
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          tools: phpunit:11
+          coverage: none
+      - name: Official Symcon library and module validation
+        env:
+          SYMCON_STUBS_DIR: ${{ github.workspace }}/.symcon-stubs
+        run: phpunit --no-configuration tests/SymconValidationTest.php

@@ -1,12 +1,12 @@
 {
     "id": "{18DCB570-881D-4816-9F4B-57446659A5DC}",
     "author": "Powermaniaxx",
-    "name": "Symcon Dreo",
+    "name": "Dreo 720S",
     "url": "https://github.com/Powermaniaxx/Symcon-Dreo",
     "compatibility": {
         "version": "9.0"
     },
-    "version": "0.1.0-beta.9",
-    "build": 9,
+    "version": "1.0.0",
+    "build": 10,
     "date": 1793318400
 }
