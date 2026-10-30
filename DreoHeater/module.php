@@ -6,6 +6,7 @@ require_once __DIR__ . '/../libs/Client.php';
 use SymconDreo\Client;
 use SymconDreo\Protocol;
 use SymconDreo\ApiException;
+use SymconDreo\EndpointCache;
 
 class DreoHeater extends IPSModuleStrict
 {
@@ -25,6 +26,7 @@ class DreoHeater extends IPSModuleStrict
         $this->RegisterTimer('ConnectionTest', 0, 'IPS_RequestAction($_IPS["TARGET"], "RunConnectionTest", true);');
         $this->RegisterTimer('FormAction', 0, 'IPS_RequestAction($_IPS["TARGET"], "RunFormAction", true);');
         $this->RegisterTimer('CommandQueue', 0, 'IPS_RequestAction($_IPS["TARGET"], "RunCommandQueue", true);');
+        $this->RegisterTimer('EndpointWarmup', 0, 'IPS_RequestAction($_IPS["TARGET"], "WarmEndpoints", true);');
         $this->RegisterVariableBoolean('Power', 'Ein/Aus', ['PRESENTATION' => VARIABLE_PRESENTATION_SWITCH], 10);
         $this->RegisterVariableInteger('Mode', 'Betriebsart', $this->enumPresentation(['Nur Lüften', 'Heizen', 'ECO']), 20);
         $this->RegisterVariableInteger('HeatLevel', 'Heizstufe', $this->enumPresentation([1 => 'H1', 2 => 'H2', 3 => 'H3']), 30);
@@ -49,6 +51,7 @@ class DreoHeater extends IPSModuleStrict
     public function ApplyChanges(): void
     {
         parent::ApplyChanges();
+        $this->SetTimerInterval('EndpointWarmup', 0);
         $this->cancelCommandQueue();
         $this->SetTimerInterval('Refresh', 0);
         $this->SetTimerInterval('ConnectionTest', 0);
@@ -81,7 +84,7 @@ class DreoHeater extends IPSModuleStrict
             return;
         }
         $this->SetSummary('Dreo 720S · ' . $this->ReadPropertyString('Region'));
-        if (IPS_GetKernelRunlevel() === KR_READY) { $this->SetTimerInterval('Refresh', 1000); }
+        if (IPS_GetKernelRunlevel() === KR_READY) { $this->SetTimerInterval('Refresh', 1000); $this->SetTimerInterval('EndpointWarmup', 1000); }
         $this->SetStatus(101);
     }
 
@@ -159,6 +162,7 @@ class DreoHeater extends IPSModuleStrict
             case 'TestConnection': $this->TestConnection(); return;
             case 'RunConnectionTest': $this->connectionTestStep(); return;
             case 'RunCommandQueue': $this->SetTimerInterval('CommandQueue', 0); $this->processCommandQueue(); return;
+            case 'WarmEndpoints': $this->warmEndpoints(); return;
         }
         $params = Protocol::command($Ident, $Value);
         if (!$this->enqueueCommand($Ident, $params)) { return; }
@@ -206,16 +210,21 @@ class DreoHeater extends IPSModuleStrict
                 });
                 $this->SetBuffer('Pending', json_encode(['params' => $params, 'expires' => time() + 60, 'acknowledged' => true], JSON_THROW_ON_ERROR));
                 $this->SetValue('LastCommand', 'Von der Cloud angenommen; Gerätebestätigung ausstehend.');
-                $this->refreshState();
+                // The click returns after cloud acceptance. Device confirmation follows independently.
+                $this->SetTimerInterval('Refresh', 1000);
                 return true;
             }, true);
             return $entered ? $ok : null;
         } finally {
-            $this->queueLocked(function () use ($activeID): void {
+            $this->queueLocked(function () use ($activeID, $entered): void {
                 $active = json_decode($this->GetBuffer('ActiveCommand'), true) ?? [];
                 if ($activeID !== '' && ($active['id'] ?? '') === $activeID) { $this->SetBuffer('ActiveCommand', ''); }
                 $queue = json_decode($this->GetBuffer('CommandQueue'), true) ?? [];
-                $this->SetTimerInterval('CommandQueue', $queue === [] ? 0 : 500);
+                $this->SetTimerInterval('CommandQueue', $queue === [] ? 0 : ($entered ? 1 : 100));
+                if ($queue !== []) { $this->SetTimerInterval('Refresh', 0); }
+                elseif ($entered && $this->GetBuffer('Pending') !== '' && $this->GetValue('StateValid') && $this->ReadPropertyBoolean('Open')) {
+                    $this->SetTimerInterval('Refresh', 1000);
+                }
             });
         }
     }
@@ -237,14 +246,14 @@ class DreoHeater extends IPSModuleStrict
                 // A repeated click also cancels an older opposite request for the same control.
                 unset($queue[$ident]);
                 $this->SetBuffer('CommandQueue', json_encode($queue, JSON_THROW_ON_ERROR));
-                $this->SetTimerInterval('CommandQueue', $queue === [] ? 0 : 500);
+                $this->SetTimerInterval('CommandQueue', $queue === [] ? 0 : 1);
                 return false;
             }
             $created = microtime(true);
             $queue[$ident] = ['id' => bin2hex(random_bytes(8)), 'ident' => $ident, 'params' => $params,
                 'created' => $created, 'expires' => $created + 30, 'generation' => $generation];
             $this->SetBuffer('CommandQueue', json_encode($queue, JSON_THROW_ON_ERROR));
-            $this->SetTimerInterval('CommandQueue', 500);
+            $this->SetTimerInterval('CommandQueue', 1);
             $this->SetValue('LastCommand', 'Schaltauftrag vorgemerkt; je Einstellung gilt der letzte Wunsch.');
             return true;
         });
@@ -281,7 +290,7 @@ class DreoHeater extends IPSModuleStrict
     public function GetDiagnostics(): string
     {
         // Deliberate allowlist: no account name, serial, password, bearer token or raw API data.
-        return json_encode(['module' => 'SymconDreo', 'version' => '0.1.0-beta.8', 'model' => Protocol::MODEL,
+        return json_encode(['module' => 'SymconDreo', 'version' => '0.1.0-beta.9', 'model' => Protocol::MODEL,
             'region' => $this->ReadPropertyString('Region'), 'active' => $this->ReadPropertyBoolean('Open'),
             'cloudAPI' => $this->ReadPropertyString('CloudAPI'),
             'stateValid' => $this->GetValue('StateValid'), 'lastUpdateUtc' => $this->GetValue('LastUpdate'),
@@ -292,6 +301,7 @@ class DreoHeater extends IPSModuleStrict
             'lastFormAction' => json_decode($this->GetBuffer('LastFormAction'), true) ?? [],
             'queuedFormAction' => $this->GetBuffer('QueuedFormAction'),
             'queuedControls' => array_keys(json_decode($this->GetBuffer('CommandQueue'), true) ?? []),
+            'commandTiming' => json_decode($this->GetBuffer('CommandTiming'), true) ?? [],
             'serverRegion' => (json_decode($this->GetBuffer('Session'), true) ?? [])['region'] ?? null,
             'stateKeys' => array_keys(json_decode($this->GetBuffer('State'), true) ?? [])],
             JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
@@ -418,10 +428,56 @@ class DreoHeater extends IPSModuleStrict
         foreach (json_decode($this->ReadAttributeString('Devices'), true) ?? [] as $device) {
             if ($device['serial'] === $this->ReadPropertyString('Serial')) { $config = $device['heaterConfig'] ?? []; break; }
         }
-        return new Client($region, $token, $this->httpTransport(), max(0, $this->operationDeadline - microtime(true)), 'auto', $this->ReadPropertyString('CloudAPI'), $config);
+        return new Client($region, $token, $this->httpTransport(), max(0, $this->operationDeadline - microtime(true)), 'auto', $this->ReadPropertyString('CloudAPI'), $config, $this->endpointCache());
     }
 
     protected function httpTransport(): ?Closure { return null; }
+
+    private function endpointCache(): EndpointCache
+    {
+        return new EndpointCache(
+            fn(): array => json_decode($this->GetBuffer('EndpointCache'), true) ?? [],
+            function (string $host, ?array $entry): void {
+                $lock = 'SymconDreo.DNS.' . $this->InstanceID;
+                if (!IPS_SemaphoreEnter($lock, 20)) { return; }
+                try {
+                    $entries = json_decode($this->GetBuffer('EndpointCache'), true) ?? [];
+                    if ($entry === null) { unset($entries[$host]); } else { $entries[$host] = $entry; }
+                    $this->SetBuffer('EndpointCache', json_encode($entries, JSON_THROW_ON_ERROR));
+                } finally { IPS_SemaphoreLeave($lock); }
+            },
+            fn(string $host): array => $this->resolveEndpoint($host)
+        );
+    }
+
+    protected function resolveEndpoint(string $host): array
+    {
+        return function_exists('gethostbynamel') ? (@gethostbynamel($host) ?: []) : [];
+    }
+
+    private function warmEndpoints(): void
+    {
+        $this->SetTimerInterval('EndpointWarmup', 0);
+        if (!$this->ReadPropertyBoolean('Open') || $this->ReadPropertyString('Serial') === '') { return; }
+        $lock = 'SymconDreo.Warmup.' . $this->InstanceID;
+        if (!IPS_SemaphoreEnter($lock, 1)) { $this->SetTimerInterval('EndpointWarmup', 30000); return; }
+        try {
+            if ($this->ReadPropertyString('CloudAPI') === 'app') {
+                $region = (json_decode($this->GetBuffer('Session'), true) ?? [])['region'] ?? $this->ReadPropertyString('Region');
+                $suffix = ($region === 'EU' ? 'eu' : 'us') . '.dreo-tech.com';
+                $cache = $this->endpointCache();
+                foreach (['wsb-', 'app-api-'] as $prefix) {
+                    if (!$this->ReadPropertyBoolean('Open')) { break; }
+                    $cache->warm($prefix . $suffix);
+                }
+            }
+        } catch (Throwable $e) {
+            // Optional warm-up failure must never prevent normal DNS or emit private addresses.
+        } finally {
+            IPS_SemaphoreLeave($lock);
+            $this->SetTimerInterval('EndpointWarmup', $this->ReadPropertyBoolean('Open') ? 30000 : 0);
+        }
+    }
 
     private function authenticated(Closure $operation): mixed
     {
@@ -438,7 +494,9 @@ class DreoHeater extends IPSModuleStrict
             }
         } finally {
             $this->SetBuffer('Session', json_encode($client->session(), JSON_THROW_ON_ERROR));
-            $this->SetBuffer('RequestDiagnostics', json_encode($client->diagnostics(), JSON_THROW_ON_ERROR));
+            $diagnostics = $client->diagnostics();
+            $this->SetBuffer('RequestDiagnostics', json_encode($diagnostics, JSON_THROW_ON_ERROR));
+            if (isset($diagnostics['command'])) { $this->SetBuffer('CommandTiming', json_encode($diagnostics['command'], JSON_THROW_ON_ERROR)); }
         }
     }
 

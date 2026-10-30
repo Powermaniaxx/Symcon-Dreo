@@ -62,10 +62,14 @@ function scenario(string $scenario, bool $expectSuccess): void
         } catch (Throwable $e) { fwrite(STDERR, 'Fixture server: ' . $e->getMessage() . "\n"); exit(5); }
     }
     fclose($server); $success = false;
-    try { $result = (new LoopbackSocket($address))->send('eu', 'fixture-token', 'fixture-sn', ['poweron' => true], 0.3); $success = $result === 'control-reply'; }
+    $client = new LoopbackSocket($address);
+    try { $result = $client->send('eu', 'fixture-token', 'fixture-sn', ['poweron' => true], 0.3); $success = $result === 'control-reply'; }
     catch (Throwable $e) { if (str_contains($e->getMessage(), 'do-not-leak')) { throw new RuntimeException('Raw server message leaked.'); } }
     finally { pcntl_waitpid($pid, $status); }
     if ($success !== $expectSuccess || pcntl_wexitstatus($status) !== 0) { throw new RuntimeException('FAIL loopback scenario: ' . $scenario); }
+    $timing = $client->diagnostics();
+    if ($success && (!isset($timing['sentAfterMs'], $timing['totalMs']) || $timing['sentAfterMs'] > $timing['totalMs'])) { throw new RuntimeException('Command send timing missing.'); }
+    if (str_contains(json_encode($timing), 'fixture-token')) { throw new RuntimeException('Timing leaked token.'); }
     echo 'PASS loopback: ' . $scenario . "\n";
 }
 foreach (['confirm' => true, 'fragmented' => true, 'reject' => false, 'wrong-device' => false, 'close' => false, 'bad-handshake' => false] as $scenario => $success) { scenario($scenario, $success); }

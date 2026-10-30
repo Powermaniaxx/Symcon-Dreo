@@ -2,17 +2,24 @@
 declare(strict_types=1);
 
 namespace SymconDreo;
+require_once __DIR__ . '/EndpointCache.php';
 
 /** Short-lived TLS WebSocket. No daemon, external package or disabled certificate verification. */
 class WebSocket
 {
+    private array $timings = [];
+    public function __construct(private ?EndpointCache $endpoints = null) {}
+    public function diagnostics(): array { return $this->timings; }
+
     public function send(string $region, string $token, string $serial, array $params, float $timeout): string
     {
         if (!in_array($region, ['eu', 'us'], true) || $token === '') { throw new \RuntimeException('WebSocket-Anmeldung fehlt.'); }
         $host = 'wsb-' . $region . '.dreo-tech.com';
-        $deadline = microtime(true) + $timeout;
-        $socket = $this->connect($host, min(4, $timeout));
+        $started = microtime(true); $deadline = $started + $timeout;
+        $socket = null; $this->timings = ['transport' => 'websocket'];
         try {
+            $socket = $this->connect($host, min(4, $timeout));
+            $this->timings['connectMs'] = round((microtime(true) - $started) * 1000, 1);
             $key = base64_encode(random_bytes(16));
             $path = '/websocket?' . http_build_query(['accessToken' => $token, 'timestamp' => (string) (int) floor(microtime(true) * 1000)], '', '&', PHP_QUERY_RFC3986);
             self::writeAll($socket, "GET $path HTTP/1.1\r\nHost: $host\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: $key\r\nSec-WebSocket-Version: 13\r\n\r\n", $deadline);
@@ -30,6 +37,7 @@ class WebSocket
             self::writeAll($socket, self::frame('2'), $deadline);
             self::writeAll($socket, self::frame(json_encode(['devicesn' => $serial, 'method' => 'control',
                 'params' => $params, 'timestamp' => (string) (int) floor(microtime(true) * 1000)], JSON_THROW_ON_ERROR)), $deadline);
+            $this->timings['sentAfterMs'] = round((microtime(true) - $started) * 1000, 1);
             $fragment = '';
             while (microtime(true) < $deadline) {
                 [$opcode, $payload, $final] = self::readFrame($socket, $deadline);
@@ -53,16 +61,35 @@ class WebSocket
                 return (string) $message['method'];
             }
             throw new \RuntimeException('Keine Dreo-Bestätigung; Ausführung unklar. Status aktualisieren.');
-        } finally { fclose($socket); }
+        } finally {
+            $this->timings['totalMs'] = round((microtime(true) - $started) * 1000, 1);
+            if (is_resource($socket)) { fclose($socket); }
+        }
     }
 
     protected function connect(string $host, float $timeout): mixed
     {
-        $context = stream_context_create(['ssl' => ['verify_peer' => true, 'verify_peer_name' => true,
-            'peer_name' => $host, 'SNI_enabled' => true]]);
-        $socket = @stream_socket_client('tls://' . $host . ':443', $errno, $error, $timeout, STREAM_CLIENT_CONNECT, $context);
+        $ssl = ['verify_peer' => true, 'verify_peer_name' => true, 'peer_name' => $host, 'SNI_enabled' => true];
+        $address = $this->endpoints?->get($host);
+        $this->timings['cachedAddressUsed'] = $address !== null;
+        $socket = $this->dial('tls://' . ($address ?? $host) . ':443', $timeout, $ssl);
+        if ($socket === false && $address !== null) {
+            $this->endpoints?->forget($host);
+            $address = null;
+            // No handshake/control has been written: retrying the connection cannot duplicate a command.
+            $socket = $this->dial('tls://' . $host . ':443', $timeout, $ssl);
+        }
         if ($socket === false) { throw new \RuntimeException('Dreo-WebSocket nicht erreichbar.'); }
+        if ($address === null) {
+            $peer = stream_socket_get_name($socket, true);
+            if (is_string($peer)) { $this->endpoints?->remember($host, explode(':', $peer)[0]); }
+        }
         return $socket;
+    }
+
+    protected function dial(string $target, float $timeout, array $ssl): mixed
+    {
+        return @stream_socket_client($target, $errno, $error, $timeout, STREAM_CLIENT_CONNECT, stream_context_create(['ssl' => $ssl]));
     }
 
     public static function frame(string $payload, int $opcode = 1): string

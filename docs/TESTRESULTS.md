@@ -1,4 +1,4 @@
-# Testprotokoll 0.1.0-beta.8
+# Testprotokoll 0.1.0-beta.9
 
 Datum: 30.10.2026. Lokale Laufzeit: PHP CLI 8.3.6.
 
@@ -6,7 +6,10 @@ Datum: 30.10.2026. Lokale Laufzeit: PHP CLI 8.3.6.
 | --- | --- |
 | PHP-Syntax sämtlicher PHP-Dateien | Bestanden |
 | JSON-Parsing aller Konfigurationsdateien | Bestanden |
-| Protokoll-/Modultests mit synthetischen Antworten und SDK-Ersatz | 192 Prüfungen bestanden |
+| Protokoll-/Modultests mit synthetischen Antworten und SDK-Ersatz | 194 Prüfungen bestanden |
+| Adresscache und unabhängige Hintergrundauflösung | 14 Prüfungen ohne öffentliches DNS bestanden |
+| Natives TLS mit zwischengespeicherter IP | Passender Host akzeptiert, falscher Host und nicht vertrauenswürdiges Zertifikat abgelehnt |
+| Kein HTTP-Statuslesen im Klick, Wiederaufnahme nach abgelaufenem Folgeauftrag | Bestanden mit SDK-Ersatz |
 | OpenAPI-Protokoll und vollständiger Modulablauf | 130 Prüfungen mit synthetischen Heizgerätedaten bestanden |
 | Natives cURL gegen aufgezeichnete Hersteller-SDK-Anfragen | Vier Anfragen: Login, Liste, Status, Steuerung stimmen überein |
 | Lokaler WebSocket: Annahme | Bestanden |
@@ -21,6 +24,8 @@ Datum: 30.10.2026. Lokale Laufzeit: PHP CLI 8.3.6.
 | Teilresultate, wiederholter Klick, Abbruch bei Konfigurationsänderung | Bestanden mit SDK-Ersatz |
 | Natives cURL: Timeout mit erhaltenen Fehler-/Laufzeitdaten | Bestanden |
 | Natives cURL: anonymer IPv4-Test mit HTTP 405 | Bestanden |
+| Natives cURL: CURLOPT_RESOLVE und Cache-Invalidierung nach Timeout | Bestanden |
+| Reale Klick-/Versandzeit unter beta.9 | Noch zu messen; bisher HTTP-DNS-Zeit etwa 5 Sekunden |
 | Anonyme Cloud-Abfrage beim Nutzer mit beta.5 | HTTP 200, API 100000, cURL 0; DNS etwa 5 s. Dies war kein Anmeldetest |
 | Reale App-API-Anmeldung und 720S-Geräteliste, EU, beta.6 | HTTP 200/API 0, genau ein unterstütztes Gerät mit Seriennummer |
 | Reales App-API-Statuslesen, beta.6 | HTTP 200/API 0, StateValid=true, letzter bestätigter Abruf 30.10.2026 07:05:40 UTC; Firmware nicht gemeldet |

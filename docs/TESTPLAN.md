@@ -3,11 +3,13 @@
 ## Bisher durchgeführt
 
 - PHP-Syntaxprüfung aller Modul-, Bibliotheks- und Testdateien.
-- 192 Prüfungen mit synthetischen Protokollantworten und SDK-Ersatz unter PHP 8.3.6.
+- 194 Prüfungen mit synthetischen Protokollantworten und SDK-Ersatz unter PHP 8.3.6.
 - 130 OpenAPI-Prüfungen einschließlich vollständigem Modulablauf und vier native cURL-Anfragen gegen die aufgezeichnete Hersteller-SDK-Referenz.
 - Sechs lokale WebSocket-Szenarien: Annahme, Fragmentierung plus Ping/Pong, Ablehnung, falsches Gerät, vorzeitiges Schließen, falscher Handshake.
 
 Die Entwicklungsumgebung verwendet keine echten Dreo-Zugangsdaten oder Geräte. Beim Nutzer sind unter beta.6 am 30.10.2026 in Symcon mit einem EU-Konto und einem DR-HSH040S Anmeldung, Erkennung und Statuslesen über App-API bestätigt. Der letzte vorliegende Statusabruf ist 07:05:40 UTC mit StateValid=true. Die Geräte-Firmware wurde nicht mitgeteilt. Die grundlegende Ein/Aus-Steuerung ist durch Nutzer und Screenshot unter beta.6/beta.7 bestätigt. Die Mehrfachklick-Korrektur aus beta.8, weitere Schaltfunktionen und die Prüfung der Temperaturanzeige bleiben offen.
+
+- 14 Adresscache-Prüfungen und native TLS-Prüfung von Hostname und Zertifikatsvertrauen.
 
 ## Noch offen
 
@@ -22,6 +24,7 @@ Die Entwicklungsumgebung verwendet keine echten Dreo-Zugangsdaten oder Geräte. 
 | Kalter Start mit ausgeschaltetem Gerät | Gerät bleibt ausgeschaltet, keine Schaltbefehle | Offen |
 | Neustart und Änderungen übernehmen | Gerät bleibt in seinem bisherigen Zustand | Offen |
 | Ein/Aus-Grundfunktion | Gerätezustand ändert sich; tatsächlicher Status bestätigt | Nutzerbestätigung und Screenshot vom 30.10.2026; beta.6/beta.7 |
+| Klick- und Versandlatenz unter beta.9 | commandTiming und reale Reaktion vergleichen; kalten und vorgewärmten Cache getrennt messen | Offen |
 | Schnelle Mehrfachklicks | Kein Sperr-Fehlerdialog; letzter gewünschter Zustand wird verarbeitet | Lokal mit SDK-Ersatz geprüft; real unter beta.8 offen |
 | Wartende Befehle bei Reset, Ablauf und Fehler | Keine verspätete oder wiederholte Ausführung | Lokal mit SDK-Ersatz geprüft; real offen |
 | Lüften, Heizen und ECO | Zuordnung korrekt; Moduswechsel schaltet ausgeschaltetes Gerät nicht ein | Offen |

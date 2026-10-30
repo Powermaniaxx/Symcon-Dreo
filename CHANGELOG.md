@@ -1,5 +1,13 @@
 # Änderungen
 
+## 0.1.0-beta.9 – 30.10.2026
+
+- Der Klick führt den Versand direkt aus und wartet anschließend nicht mehr auf die zusätzliche HTTP-Statusabfrage. Die Gerätebestätigung wird separat nachgeholt; keine optimistische Erfolgsmeldung.
+- Wartende Folgebefehle können unmittelbar nach Ende des aktuellen Versands starten. Bei belegter Abfrage-Sperre beträgt der Timer-Abstand 100 ms statt 500 ms.
+- DNS-Adressen werden für höchstens 120 Sekunden intern wiederverwendet. Der Schaltserver wird unabhängig von Geräteabfragen im Hintergrund aufgelöst; normale DNS-Auflösung bleibt bei fehlendem oder ungültigem Cache verfügbar.
+- TLS prüft weiterhin den ursprünglichen Dreo-Hostnamen. Ein nativer TLS-Test akzeptiert den passenden Host und lehnt falschen Hostnamen sowie nicht vertrauenswürdiges Zertifikat ab.
+- Diagnose enthält commandTiming mit Verbindungs-, Versand- und Gesamtdauer ohne Token oder IP-Adressen. Die tatsächliche Beschleunigung am Nutzergerät ist noch zu messen.
+
 ## 0.1.0-beta.8 – 30.10.2026
 
 - Doppelklicks lösen bei belegter Abfrage-Sperre keine Exception mehr aus. Folgebefehle warten pro Einstellung mit dem jeweils letzten gewünschten Wert; unterschiedliche Einstellungen bleiben geordnet.

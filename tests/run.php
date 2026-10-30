@@ -203,7 +203,9 @@ check(!$h->values['StateValid'] && !$h->actions['Power'], 'controls disabled bef
 check($h->Refresh() && $h->values['CurrentTemperature'] === 21.1, 'module displays Celsius from real protocol values');
 check($h->values['TargetTemperature'] === 21.0, 'module setpoint matches app whole Celsius');
 check($h->timers['Refresh'] === 30000 && $h->status === 102, 'poll interval/status after successful refresh');
+$readsBeforeSend = $h->fake->reads;
 $h->SetPower(true);
+check($h->fake->reads === $readsBeforeSend && $h->timers['Refresh'] === 1000, 'click sends without waiting for an HTTP confirmation poll');
 check($h->values['Power'] === false, 'server acceptance never overwrites actual power');
 check(str_contains($h->values['LastCommand'], 'ausstehend'), 'unconfirmed command explicitly pending');
 $h->fake->stateData['poweron'] = true; $h->Refresh();
@@ -235,15 +237,16 @@ check(!$h->Refresh() && !$h->values['StateValid'], 'partial state does not leave
 $h = heater(); $h->Refresh(); $GLOBALS['busy'] = true;
 check(!$h->Refresh() && $h->values['StateValid'], 'busy poll does not invalidate concurrent state');
 $h->SetPower(true);
-check($h->timers['CommandQueue'] === 500 && $h->fake->sent === [], 'concurrent command is deferred without exception or overlapping send');
+check($h->timers['CommandQueue'] === 100 && $h->fake->sent === [], 'concurrent command is deferred without exception or overlapping send');
 $GLOBALS['busy'] = false;
 $q = heater(); $q->Refresh(); $q->fake->applyCommand = true;
 $q->fake->duringSend = static function () use ($q): void { $q->SetPower(false); $q->SetPower(false); };
 $q->SetPower(true);
-check($q->fake->sent === [['poweron' => true]] && $q->timers['CommandQueue'] === 500, 'rapid opposite clicks wait without overlapping the active send');
+check($q->fake->sent === [['poweron' => true]] && $q->timers['CommandQueue'] === 1, 'rapid opposite clicks follow active send without an extra half-second delay');
 check($q->values['StateValid'] && $q->values['LastError'] === '', 'double click does not invalidate state or create an error');
 $q->RequestAction('RunCommandQueue', true);
 check($q->fake->sent === [['poweron' => true], ['poweron' => false]], 'latest queued power intent is sent once after active command');
+$q->Refresh();
 check(!$q->values['Power'] && $q->timers['CommandQueue'] === 0 && $q->values['LastCommand'] === 'Durch Gerätestatus bestätigt.', 'queued power finishes with reported state and stopped timer');
 $q->RequestAction('RunCommandQueue', true);
 check(count($q->fake->sent) === 2, 'stale command timer never replays completed work');
@@ -257,7 +260,7 @@ $staleActive->SetPower(true);
 check($staleActive->fake->sent === [['poweron' => true]], 'expired active marker cannot swallow a new explicit request');
 $reversed = heater(); $reversed->Refresh(); $reversed->fake->applyCommand = true;
 $reversed->fake->duringSend = static function () use ($reversed): void { $reversed->SetPower(false); $reversed->SetPower(true); };
-$reversed->SetPower(true); $reversed->RequestAction('RunCommandQueue', true);
+$reversed->SetPower(true); $reversed->RequestAction('RunCommandQueue', true); $reversed->Refresh();
 check($reversed->fake->sent === [['poweron' => true]] && $reversed->values['Power'], 'latest intent matching active command cancels queued opposite intent');
 $multiple = heater(); $multiple->Refresh(); $multiple->fake->applyCommand = true;
 $GLOBALS['busy'] = true; $multiple->SetMode(1); $multiple->SetTargetTemperature(20); $multiple->SetTargetTemperature(21); $GLOBALS['busy'] = false;
@@ -268,6 +271,12 @@ $expired = heater(); $expired->Refresh(); $GLOBALS['busy'] = true; $expired->Set
 $waiting = json_decode($expired->buffers['CommandQueue'], true); $waiting['Power']['expires'] = microtime(true) - 1; $expired->buffers['CommandQueue'] = json_encode($waiting);
 $expired->RequestAction('RunCommandQueue', true);
 check($expired->fake->sent === [] && str_contains($expired->values['LastCommand'], 'abgelaufen'), 'expired queued heater command is discarded without execution');
+$resumePoll = heater(); $resumePoll->Refresh();
+$resumePoll->fake->duringSend = static function () use ($resumePoll): void { $resumePoll->SetPower(false); };
+$resumePoll->SetPower(true);
+$waiting = json_decode($resumePoll->buffers['CommandQueue'], true); $waiting['Power']['expires'] = microtime(true) - 1; $resumePoll->buffers['CommandQueue'] = json_encode($waiting);
+$resumePoll->RequestAction('RunCommandQueue', true);
+check(count($resumePoll->fake->sent) === 1 && $resumePoll->timers['Refresh'] === 1000, 'expired follow-up still resumes pending device confirmation polling');
 foreach (['ApplyChanges', 'ResetSession'] as $cancelAction) {
     $cancelled = heater(); $cancelled->Refresh(); $GLOBALS['busy'] = true; $cancelled->SetPower(true); $GLOBALS['busy'] = false;
     $cancelled->$cancelAction(); $cancelled->RequestAction('RunCommandQueue', true);
@@ -331,7 +340,7 @@ function clickButton(TestHeater $instance, string $caption): string {
     finally { ob_end_clean(); }
 }
 $ui = heater();
-check(str_contains(clickButton($ui, 'Oberfläche testen'), '0.1.0-beta.8: Klick empfangen. Instanz 101'), 'pure console callback immediately prints version and instance');
+check(str_contains(clickButton($ui, 'Oberfläche testen'), '0.1.0-beta.9: Klick empfangen. Instanz 101'), 'pure console callback immediately prints version and instance');
 check(str_contains(clickButton($ui, 'Geräte suchen'), 'Klick empfangen'), 'actual search callback acknowledges before network work');
 check($ui->timers['FormAction'] === 1000 && $ui->attributes['Devices'] === '[]', 'search waits for background timer');
 check(str_contains(clickButton($ui, 'Status aktualisieren'), 'wartet bereits'), 'second form job does not replace queued search');
@@ -353,7 +362,7 @@ $rejectedUi = heater();
 check(str_contains(clickButton($rejectedUi, 'Geräte suchen'), 'Symcon meldet einen Aufruffehler')
     && $rejectedUi->timers['FormAction'] === 0, 'rejected kernel call reports failure without claiming a queued search');
 $GLOBALS['callbackReject'] = false;
-check(json_decode(clickButton($rejectedUi, 'Diagnose anzeigen'), true)['version'] === '0.1.0-beta.8', 'diagnostics returns JSON directly without action output');
+check(json_decode(clickButton($rejectedUi, 'Diagnose anzeigen'), true)['version'] === '0.1.0-beta.9', 'diagnostics returns JSON directly without action output');
 $ui = heater(); clickButton($ui, 'Geräte suchen'); $ui->ApplyChanges(); $ui->RequestAction('RunFormAction', true);
 check($ui->attributes['Devices'] === '[]' && $ui->timers['FormAction'] === 0, 'apply cancels waiting form work');
 $ui = new TestHeater(); clickButton($ui, 'Status aktualisieren'); $ui->RequestAction('RunFormAction', true);

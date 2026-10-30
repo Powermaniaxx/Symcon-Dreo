@@ -2,6 +2,11 @@
 declare(strict_types=1);
 
 namespace SymconDreo {
+    function curl_setopt(\CurlHandle $handle, int $option, mixed $value): bool
+    {
+        if ($option === CURLOPT_RESOLVE) { $GLOBALS['resolve_options'] = $value; }
+        return \curl_setopt($handle, $option, $value);
+    }
     // Only this test redirects the fixed Dreo host to a local HTTP fixture.
     function curl_init(?string $url = null): \CurlHandle|false
     {
@@ -63,5 +68,19 @@ namespace {
             || $request['tlsMs'] !== 0.0) {
             throw new \RuntimeException('Native anonymous IPv4 probe failed.');
         }
+    });
+    $entries = [];
+    $cache = new \SymconDreo\EndpointCache(static function () use (&$entries): array { return $entries; },
+        static function ($host, $entry) use (&$entries): void { if ($entry === null) { unset($entries[$host]); } else { $entries[$host] = $entry; } });
+    $cache->remember('app-api-eu.dreo-tech.com', '127.0.0.1');
+    $expires = $entries['app-api-eu.dreo-tech.com']['expires'];
+    fixture('cached resolve', static function () use ($cache, &$entries, $expires): void {
+        $result = (new \SymconDreo\Client('EU', '', null, 2, 'auto', 'app', [], $cache))->probe();
+        if (!$result['requests'][0]['cachedAddressUsed'] || $GLOBALS['resolve_options'] !== ['app-api-eu.dreo-tech.com:443:127.0.0.1']
+            || $entries['app-api-eu.dreo-tech.com']['expires'] !== $expires) { throw new \RuntimeException('Cached cURL resolve missing or old address extended.'); }
+    });
+    fixture('timeout', static function () use ($cache, &$entries): void {
+        (new \SymconDreo\Client('EU', '', null, 1, 'auto', 'app', [], $cache))->probe();
+        if (isset($entries['app-api-eu.dreo-tech.com'])) { throw new \RuntimeException('Failed cached address was retained.'); }
     });
 }

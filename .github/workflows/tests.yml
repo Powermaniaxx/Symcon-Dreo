@@ -24,3 +24,5 @@ jobs:
       - run: php tests/http-integration.php
       - run: php tests/openapi.php
       - run: php tests/openapi-wire.php
+      - run: php tests/endpoints.php
+      - run: php tests/tls-endpoint.php

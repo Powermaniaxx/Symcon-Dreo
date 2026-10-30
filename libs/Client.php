@@ -5,6 +5,7 @@ namespace SymconDreo;
 
 require_once __DIR__ . '/Protocol.php';
 require_once __DIR__ . '/WebSocket.php';
+require_once __DIR__ . '/EndpointCache.php';
 
 class ApiException extends \RuntimeException {}
 
@@ -18,8 +19,9 @@ class Client
     private string $addressFamily;
     private string $apiMode;
     private array $heaterConfig;
+    private ?EndpointCache $endpoints;
 
-    public function __construct(string $region, string $token = '', ?\Closure $http = null, float $budget = 22.0, string $addressFamily = 'auto', string $apiMode = 'app', array $heaterConfig = [])
+    public function __construct(string $region, string $token = '', ?\Closure $http = null, float $budget = 22.0, string $addressFamily = 'auto', string $apiMode = 'app', array $heaterConfig = [], ?EndpointCache $endpoints = null)
     {
         if (!in_array($region, ['EU', 'NA'], true)) { throw new \InvalidArgumentException('Ungültige Region.'); }
         $this->region = $region;
@@ -30,6 +32,7 @@ class Client
         if (!in_array($apiMode, ['app', 'openapi'], true)) { throw new \InvalidArgumentException('Ungültige Cloud-API.'); }
         $this->apiMode = $apiMode;
         $this->heaterConfig = $heaterConfig;
+        $this->endpoints = $endpoints;
         $this->deadline = microtime(true) + max(0, min(22.0, $budget));
     }
 
@@ -140,7 +143,9 @@ class Client
         }
         $remaining = $this->deadline - microtime(true);
         if ($remaining < 2) { throw new ApiException('Zeitbudget erschöpft; kein Schaltbefehl gesendet.'); }
-        return (new WebSocket())->send($this->region === 'EU' ? 'eu' : 'us', $this->token, $serial, $params, min(8.0, $remaining));
+        $socket = new WebSocket($this->endpoints);
+        try { return $socket->send($this->region === 'EU' ? 'eu' : 'us', $this->token, $serial, $params, min(8.0, $remaining)); }
+        finally { $this->diagnostics['command'] = $socket->diagnostics(); }
     }
 
     private function api(string $path, string $method, array $body, ?string $regionOverride = null): array
@@ -159,6 +164,7 @@ class Client
         if ($this->apiMode === 'openapi') { $query['dreover'] = '1.0.0'; }
         if ($method === 'GET') { $query = array_merge($body, $query); }
         $url = $host . $path . '?' . http_build_query($query, '', '&', PHP_QUERY_RFC3986);
+        $hostname = (string) parse_url($host, PHP_URL_HOST);
         $headers = ['ua: dreo/2.8.2', 'lang: en', 'Content-Type: application/json; charset=UTF-8',
             'User-Agent: okhttp/4.9.1'];
         if ($this->apiMode === 'openapi') { $headers = ['UA: openapi/1.0.0', 'Content-Type: application/json']; }
@@ -175,6 +181,8 @@ class Client
                     CURLOPT_TIMEOUT_MS => $timeout,
                     CURLOPT_SSL_VERIFYPEER => true, CURLOPT_SSL_VERIFYHOST => 2,
                     CURLOPT_FOLLOWLOCATION => false, CURLOPT_ENCODING => '']);
+                $cachedAddress = $this->endpoints?->get($hostname);
+                if ($cachedAddress !== null) { curl_setopt($ch, CURLOPT_RESOLVE, [$hostname . ':443:' . $cachedAddress]); }
                 if ($this->addressFamily === 'ipv4') { curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4); }
                 if ($method === 'POST') {
                     curl_setopt($ch, CURLOPT_POST, true);
@@ -184,7 +192,10 @@ class Client
                 $curlCode = curl_errno($ch);
                 $info = curl_getinfo($ch);
                 $info['appconnect_time'] = curl_getinfo($ch, CURLINFO_APPCONNECT_TIME);
+                if ($curlCode === 0 && $cachedAddress === null && curl_getinfo($ch, CURLINFO_HTTP_CONNECTCODE) === 0 && is_string($info['primary_ip'] ?? null)) { $this->endpoints?->remember($hostname, $info['primary_ip']); }
+                elseif ($curlCode !== 0 && $cachedAddress !== null) { $this->endpoints?->forget($hostname); }
                 $stats = Protocol::transferStats($info, $curlCode);
+                $stats['cachedAddressUsed'] = $cachedAddress !== null;
                 $this->diagnostics['requests'][$requestIndex] = array_merge($this->diagnostics['requests'][$requestIndex], $stats);
                 $status = $stats['httpStatus'];
                 if ($raw === false) {
