@@ -24,6 +24,7 @@ class DreoHeater extends IPSModuleStrict
         $this->RegisterTimer('Refresh', 0, 'DREO_Refresh($_IPS["TARGET"]);');
         $this->RegisterTimer('ConnectionTest', 0, 'IPS_RequestAction($_IPS["TARGET"], "RunConnectionTest", true);');
         $this->RegisterTimer('FormAction', 0, 'IPS_RequestAction($_IPS["TARGET"], "RunFormAction", true);');
+        $this->RegisterTimer('CommandQueue', 0, 'IPS_RequestAction($_IPS["TARGET"], "RunCommandQueue", true);');
         $this->RegisterVariableBoolean('Power', 'Ein/Aus', ['PRESENTATION' => VARIABLE_PRESENTATION_SWITCH], 10);
         $this->RegisterVariableInteger('Mode', 'Betriebsart', $this->enumPresentation(['Nur Lüften', 'Heizen', 'ECO']), 20);
         $this->RegisterVariableInteger('HeatLevel', 'Heizstufe', $this->enumPresentation([1 => 'H1', 2 => 'H2', 3 => 'H3']), 30);
@@ -48,6 +49,7 @@ class DreoHeater extends IPSModuleStrict
     public function ApplyChanges(): void
     {
         parent::ApplyChanges();
+        $this->cancelCommandQueue();
         $this->SetTimerInterval('Refresh', 0);
         $this->SetTimerInterval('ConnectionTest', 0);
         $this->SetTimerInterval('FormAction', 0);
@@ -156,28 +158,105 @@ class DreoHeater extends IPSModuleStrict
                 return;
             case 'TestConnection': $this->TestConnection(); return;
             case 'RunConnectionTest': $this->connectionTestStep(); return;
+            case 'RunCommandQueue': $this->SetTimerInterval('CommandQueue', 0); $this->processCommandQueue(); return;
         }
         $params = Protocol::command($Ident, $Value);
-        $ok = $this->guard(function () use ($params): bool {
-            if (!$this->ReadPropertyBoolean('Open')) { throw new RuntimeException('Die Instanz ist deaktiviert.'); }
-            $this->configuration(true);
-            $this->verifySelectedDevice();
-            // An old failed/unknown status must not accidentally enable a heater.
-            if (!$this->GetValue('StateValid')) { throw new RuntimeException('Zuerst einen gültigen Gerätestatus abrufen.'); }
-            $serial = $this->ReadPropertyString('Serial');
-            $raw = json_decode($this->GetBuffer('State'), true) ?? [];
-            if (isset($raw['connected']) && in_array($raw['connected'], [false, 0], true)) {
-                throw new RuntimeException('Das Gerät wurde als offline gemeldet.');
+        if (!$this->enqueueCommand($Ident, $params)) { return; }
+        if ($this->processCommandQueue() === false) { throw new RuntimeException((string) $this->GetValue('LastError')); }
+    }
+
+    private function processCommandQueue(): ?bool
+    {
+        $entered = false; $activeID = '';
+        try {
+            $ok = $this->guard(function () use (&$entered, &$activeID): bool {
+                $entered = true;
+                $request = $this->queueLocked(function (): ?array {
+                    $queue = json_decode($this->GetBuffer('CommandQueue'), true) ?? [];
+                    if ($queue === []) { return null; }
+                    uasort($queue, static fn($a, $b) => $a['created'] <=> $b['created']);
+                    $ident = array_key_first($queue); $request = $queue[$ident]; unset($queue[$ident]);
+                    $this->SetBuffer('CommandQueue', json_encode($queue, JSON_THROW_ON_ERROR));
+                    $this->SetBuffer('ActiveCommand', json_encode($request, JSON_THROW_ON_ERROR));
+                    return $request;
+                });
+                if ($request === null) { return true; }
+                $activeID = $request['id']; $params = $request['params'];
+                if (microtime(true) >= $request['expires'] || $request['generation'] !== $this->GetBuffer('CommandGeneration')) {
+                    $this->SetValue('LastCommand', 'Vorgemerkter Schaltauftrag abgelaufen oder abgebrochen.');
+                    return true;
+                }
+                if (!$this->ReadPropertyBoolean('Open')) { throw new RuntimeException('Die Instanz ist deaktiviert.'); }
+                $this->configuration(true);
+                $this->verifySelectedDevice();
+                // An old failed/unknown status must not accidentally enable a heater.
+                if (!$this->GetValue('StateValid')) { throw new RuntimeException('Zuerst einen gültigen Gerätestatus abrufen.'); }
+                $serial = $this->ReadPropertyString('Serial');
+                $raw = json_decode($this->GetBuffer('State'), true) ?? [];
+                if (isset($raw['connected']) && in_array($raw['connected'], [false, 0], true)) {
+                    throw new RuntimeException('Das Gerät wurde als offline gemeldet.');
+                }
+                $this->SetValue('LastCommand', 'Wird gesendet; tatsächlicher Gerätestatus bleibt maßgeblich.');
+                $this->SetBuffer('Pending', json_encode(['params' => $params, 'expires' => time() + 60, 'acknowledged' => false], JSON_THROW_ON_ERROR));
+                $this->authenticated(function (Client $client) use ($serial, $params, $request): string {
+                    if (microtime(true) >= $request['expires'] || $request['generation'] !== $this->GetBuffer('CommandGeneration')) {
+                        throw new RuntimeException('Vorgemerkter Schaltauftrag vor Versand abgelaufen oder abgebrochen.');
+                    }
+                    return $client->send($serial, $params);
+                });
+                $this->SetBuffer('Pending', json_encode(['params' => $params, 'expires' => time() + 60, 'acknowledged' => true], JSON_THROW_ON_ERROR));
+                $this->SetValue('LastCommand', 'Von der Cloud angenommen; Gerätebestätigung ausstehend.');
+                $this->refreshState();
+                return true;
+            }, true);
+            return $entered ? $ok : null;
+        } finally {
+            $this->queueLocked(function () use ($activeID): void {
+                $active = json_decode($this->GetBuffer('ActiveCommand'), true) ?? [];
+                if ($activeID !== '' && ($active['id'] ?? '') === $activeID) { $this->SetBuffer('ActiveCommand', ''); }
+                $queue = json_decode($this->GetBuffer('CommandQueue'), true) ?? [];
+                $this->SetTimerInterval('CommandQueue', $queue === [] ? 0 : 500);
+            });
+        }
+    }
+
+    private function queueLocked(Closure $operation): mixed
+    {
+        $lock = 'SymconDreo.Queue.' . $this->InstanceID;
+        if (!IPS_SemaphoreEnter($lock, 1000)) { throw new RuntimeException('Schaltauftrag konnte nicht vorgemerkt werden. Bitte erneut versuchen.'); }
+        try { return $operation(); } finally { IPS_SemaphoreLeave($lock); }
+    }
+
+    private function enqueueCommand(string $ident, array $params): bool
+    {
+        return $this->queueLocked(function () use ($ident, $params): bool {
+            $queue = json_decode($this->GetBuffer('CommandQueue'), true) ?? [];
+            $active = json_decode($this->GetBuffer('ActiveCommand'), true) ?? [];
+            $generation = $this->GetBuffer('CommandGeneration');
+            if (($active['generation'] ?? null) === $generation && ($active['expires'] ?? 0) > microtime(true) && ($active['params'] ?? null) === $params) {
+                // A repeated click also cancels an older opposite request for the same control.
+                unset($queue[$ident]);
+                $this->SetBuffer('CommandQueue', json_encode($queue, JSON_THROW_ON_ERROR));
+                $this->SetTimerInterval('CommandQueue', $queue === [] ? 0 : 500);
+                return false;
             }
-            $this->SetValue('LastCommand', 'Wird gesendet; tatsächlicher Gerätestatus bleibt maßgeblich.');
-            $this->SetBuffer('Pending', json_encode(['params' => $params, 'expires' => time() + 60, 'acknowledged' => false], JSON_THROW_ON_ERROR));
-            $this->authenticated(fn(Client $client): string => $client->send($serial, $params));
-            $this->SetBuffer('Pending', json_encode(['params' => $params, 'expires' => time() + 60, 'acknowledged' => true], JSON_THROW_ON_ERROR));
-            $this->SetValue('LastCommand', 'Von der Cloud angenommen; Gerätebestätigung ausstehend.');
-            $this->refreshState();
+            $created = microtime(true);
+            $queue[$ident] = ['id' => bin2hex(random_bytes(8)), 'ident' => $ident, 'params' => $params,
+                'created' => $created, 'expires' => $created + 30, 'generation' => $generation];
+            $this->SetBuffer('CommandQueue', json_encode($queue, JSON_THROW_ON_ERROR));
+            $this->SetTimerInterval('CommandQueue', 500);
+            $this->SetValue('LastCommand', 'Schaltauftrag vorgemerkt; je Einstellung gilt der letzte Wunsch.');
             return true;
-        }, true);
-        if (!$ok) { throw new RuntimeException((string) $this->GetValue('LastError')); }
+        });
+    }
+
+    private function cancelCommandQueue(): void
+    {
+        $this->queueLocked(function (): void {
+            $this->SetBuffer('CommandGeneration', bin2hex(random_bytes(8)));
+            $this->SetBuffer('CommandQueue', '');
+            $this->SetTimerInterval('CommandQueue', 0);
+        });
     }
 
     public function SetPower(bool $Value): void { $this->RequestAction('Power', $Value); }
@@ -187,6 +266,7 @@ class DreoHeater extends IPSModuleStrict
 
     public function ResetSession(): void
     {
+        $this->cancelCommandQueue();
         $this->SetBuffer('Session', '');
         $this->SetBuffer('VerifiedSerial', '');
         $this->SetBuffer('Failures', '0');
@@ -201,7 +281,7 @@ class DreoHeater extends IPSModuleStrict
     public function GetDiagnostics(): string
     {
         // Deliberate allowlist: no account name, serial, password, bearer token or raw API data.
-        return json_encode(['module' => 'SymconDreo', 'version' => '0.1.0-beta.7', 'model' => Protocol::MODEL,
+        return json_encode(['module' => 'SymconDreo', 'version' => '0.1.0-beta.8', 'model' => Protocol::MODEL,
             'region' => $this->ReadPropertyString('Region'), 'active' => $this->ReadPropertyBoolean('Open'),
             'cloudAPI' => $this->ReadPropertyString('CloudAPI'),
             'stateValid' => $this->GetValue('StateValid'), 'lastUpdateUtc' => $this->GetValue('LastUpdate'),
@@ -211,6 +291,7 @@ class DreoHeater extends IPSModuleStrict
             'networkTest' => json_decode($this->GetBuffer('NetworkTest'), true) ?? [],
             'lastFormAction' => json_decode($this->GetBuffer('LastFormAction'), true) ?? [],
             'queuedFormAction' => $this->GetBuffer('QueuedFormAction'),
+            'queuedControls' => array_keys(json_decode($this->GetBuffer('CommandQueue'), true) ?? []),
             'serverRegion' => (json_decode($this->GetBuffer('Session'), true) ?? [])['region'] ?? null,
             'stateKeys' => array_keys(json_decode($this->GetBuffer('State'), true) ?? [])],
             JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
@@ -464,14 +545,14 @@ class DreoHeater extends IPSModuleStrict
     private function guard(Closure $operation, bool $command = false): bool
     {
         $lock = 'SymconDreo.' . $this->InstanceID;
-        if (!IPS_SemaphoreEnter($lock, 1000)) {
+        if (!IPS_SemaphoreEnter($lock, $command ? 1 : 1000)) {
             // Another request owns the session; do not invalidate its state or issue a second command.
-            if ($command) { throw new RuntimeException('Dreo-Abfrage läuft bereits. Bitte kurz warten.'); }
             return false;
         }
         $this->operationDeadline = microtime(true) + 22.0;
         try { return $operation(); }
         catch (Throwable $e) {
+            $this->cancelCommandQueue();
             $this->SetValue('StateValid', false);
             $this->SetValue('HeatingKnown', false);
             $this->SetValue('Online', false);

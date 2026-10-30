@@ -3,11 +3,11 @@
 ## Bisher durchgeführt
 
 - PHP-Syntaxprüfung aller Modul-, Bibliotheks- und Testdateien.
-- 176 Prüfungen mit synthetischen Protokollantworten und SDK-Ersatz unter PHP 8.3.6.
+- 192 Prüfungen mit synthetischen Protokollantworten und SDK-Ersatz unter PHP 8.3.6.
 - 130 OpenAPI-Prüfungen einschließlich vollständigem Modulablauf und vier native cURL-Anfragen gegen die aufgezeichnete Hersteller-SDK-Referenz.
 - Sechs lokale WebSocket-Szenarien: Annahme, Fragmentierung plus Ping/Pong, Ablehnung, falsches Gerät, vorzeitiges Schließen, falscher Handshake.
 
-Die Entwicklungsumgebung verwendet keine echten Dreo-Zugangsdaten oder Geräte. Beim Nutzer sind unter beta.6 am 30.10.2026 in Symcon mit einem EU-Konto und einem DR-HSH040S Anmeldung, Erkennung und Statuslesen über App-API bestätigt. Der letzte vorliegende Statusabruf ist 07:05:40 UTC mit StateValid=true. Die Geräte-Firmware wurde nicht mitgeteilt. Schaltbefehle und die Prüfung der Temperaturanzeige bleiben offen.
+Die Entwicklungsumgebung verwendet keine echten Dreo-Zugangsdaten oder Geräte. Beim Nutzer sind unter beta.6 am 30.10.2026 in Symcon mit einem EU-Konto und einem DR-HSH040S Anmeldung, Erkennung und Statuslesen über App-API bestätigt. Der letzte vorliegende Statusabruf ist 07:05:40 UTC mit StateValid=true. Die Geräte-Firmware wurde nicht mitgeteilt. Die grundlegende Ein/Aus-Steuerung ist durch Nutzer und Screenshot unter beta.6/beta.7 bestätigt. Die Mehrfachklick-Korrektur aus beta.8, weitere Schaltfunktionen und die Prüfung der Temperaturanzeige bleiben offen.
 
 ## Noch offen
 
@@ -21,7 +21,9 @@ Die Entwicklungsumgebung verwendet keine echten Dreo-Zugangsdaten oder Geräte. 
 | Nordamerika und Regionskorrektur aus OpenAPI-Token | Anmeldung und Gerätezugriff auf korrekter Region | Offen |
 | Kalter Start mit ausgeschaltetem Gerät | Gerät bleibt ausgeschaltet, keine Schaltbefehle | Offen |
 | Neustart und Änderungen übernehmen | Gerät bleibt in seinem bisherigen Zustand | Offen |
-| Ein/Aus in Konsole und Visualisierung | Gerätezustand ändert sich; erst tatsächlicher Status bestätigt | Offen |
+| Ein/Aus-Grundfunktion | Gerätezustand ändert sich; tatsächlicher Status bestätigt | Nutzerbestätigung und Screenshot vom 30.10.2026; beta.6/beta.7 |
+| Schnelle Mehrfachklicks | Kein Sperr-Fehlerdialog; letzter gewünschter Zustand wird verarbeitet | Lokal mit SDK-Ersatz geprüft; real unter beta.8 offen |
+| Wartende Befehle bei Reset, Ablauf und Fehler | Keine verspätete oder wiederholte Ausführung | Lokal mit SDK-Ersatz geprüft; real offen |
 | Lüften, Heizen und ECO | Zuordnung korrekt; Moduswechsel schaltet ausgeschaltetes Gerät nicht ein | Offen |
 | H1, H2, H3 | Korrekte Leistungsauswahl im Heizmodus | Offen |
 | ECO-Sollwerte 5, 17, 20, 21, 29, 35 °C | App und Gerät zeigen denselben Celsius-Sollwert | Offen |

@@ -8,8 +8,13 @@ foreach (['IPS_KERNELMESSAGE' => 10001, 'KR_READY' => 10103,
     if (!defined($key)) { define($key, $value); }
 }
 function IPS_GetKernelRunlevel(): int { return KR_READY; }
-function IPS_SemaphoreEnter(string $name, int $timeout): bool { return !($GLOBALS['busy'] ?? false); }
-function IPS_SemaphoreLeave(string $name): void {}
+function IPS_SemaphoreEnter(string $name, int $timeout): bool
+{
+    if ((!str_starts_with($name, 'SymconDreo.Queue.') && ($GLOBALS['busy'] ?? false)) || isset($GLOBALS['heldLocks'][$name])) { return false; }
+    $GLOBALS['heldLocks'][$name] = true;
+    return true;
+}
+function IPS_SemaphoreLeave(string $name): void { unset($GLOBALS['heldLocks'][$name]); }
 function IPS_RequestAction(int $id, string $ident, mixed $value): bool
 {
     if (($GLOBALS['callbackFailure'] ?? false)) { throw new RuntimeException('Kernel-Testfehler'); }

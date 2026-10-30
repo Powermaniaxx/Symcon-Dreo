@@ -1,4 +1,4 @@
-# Testprotokoll 0.1.0-beta.7
+# Testprotokoll 0.1.0-beta.8
 
 Datum: 30.10.2026. Lokale Laufzeit: PHP CLI 8.3.6.
 
@@ -6,7 +6,7 @@ Datum: 30.10.2026. Lokale Laufzeit: PHP CLI 8.3.6.
 | --- | --- |
 | PHP-Syntax sämtlicher PHP-Dateien | Bestanden |
 | JSON-Parsing aller Konfigurationsdateien | Bestanden |
-| Protokoll-/Modultests mit synthetischen Antworten und SDK-Ersatz | 176 Prüfungen bestanden |
+| Protokoll-/Modultests mit synthetischen Antworten und SDK-Ersatz | 192 Prüfungen bestanden |
 | OpenAPI-Protokoll und vollständiger Modulablauf | 130 Prüfungen mit synthetischen Heizgerätedaten bestanden |
 | Natives cURL gegen aufgezeichnete Hersteller-SDK-Anfragen | Vier Anfragen: Login, Liste, Status, Steuerung stimmen überein |
 | Lokaler WebSocket: Annahme | Bestanden |
@@ -25,7 +25,9 @@ Datum: 30.10.2026. Lokale Laufzeit: PHP CLI 8.3.6.
 | Reale App-API-Anmeldung und 720S-Geräteliste, EU, beta.6 | HTTP 200/API 0, genau ein unterstütztes Gerät mit Seriennummer |
 | Reales App-API-Statuslesen, beta.6 | HTTP 200/API 0, StateValid=true, letzter bestätigter Abruf 30.10.2026 07:05:40 UTC; Firmware nicht gemeldet |
 | Reale OpenAPI-Anmeldung, beta.6 | HTTP 302 beim Login; kein Gerätelistenaufruf |
-| Reale Schaltbefehle, Modi und Temperaturzuordnung | Noch offen |
+| Reale Ein/Aus-Grundfunktion unter beta.6/beta.7 | Nutzer bestätigt Schalten; Screenshot zeigt „Durch Gerätestatus bestätigt“. Mehrfachklick erzeugte bisher eine unbehandelte Sperr-Exception |
+| Warteschlange: gleiche/gegenläufige Klicks, letzter Wunsch, Ablauf, Reset und Fehler | Bestanden mit SDK-Ersatz und simuliertem Wiedereintritt; reale Prüfung von beta.8 offen |
+| Reale Modi, Heizstufen und Temperaturzuordnung | Noch offen |
 | Echter Symcon-9-Kernel und Visualisierung | beta.6: Installation, Auswahl und Statuslesen in Symcon beim Nutzer bestätigt; neue Voreinstellung in beta.7 noch nicht real geprüft |
 | GitHub-CI-Matrix PHP 8.2/8.3/8.4 | Status des jeweiligen Commits unter [GitHub Actions](https://github.com/Powermaniaxx/Symcon-Dreo/actions) |
 

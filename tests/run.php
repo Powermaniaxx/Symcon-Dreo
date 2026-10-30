@@ -142,6 +142,7 @@ class FakeClient extends Client
     public ?Throwable $discoverFailure = null;
     public bool $applyCommand = false;
     public int $logins = 0, $reads = 0;
+    public ?Closure $duringSend = null;
     public function __construct() {
         parent::__construct('EU', 'fixture-token'); $this->devices = Protocol::devices([device()]);
         $this->stateData = ['poweron' => false, 'mode' => 'eco', 'temperature' => 70, 'ecolevel' => 70,
@@ -151,7 +152,7 @@ class FakeClient extends Client
     public function session(): array { return ['region' => 'EU', 'token' => 'fixture-token', 'apiMode' => 'app']; }
     public function discover(): array { if ($this->discoverFailure !== null) { throw $this->discoverFailure; } return $this->devices; }
     public function state(string $serial): array { ++$this->reads; if ($this->failure !== null) { $e = $this->failure; $this->failure = null; throw $e; } return $this->stateData; }
-    public function send(string $serial, array $params): string { $this->sent[] = $params; if ($this->sendFailure !== null) { $e = $this->sendFailure; $this->sendFailure = null; throw $e; } if ($this->applyCommand) { $this->stateData = array_merge($this->stateData, $params); } return 'control-reply'; }
+    public function send(string $serial, array $params): string { $this->sent[] = $params; if ($this->duringSend !== null) { $hook = $this->duringSend; $this->duringSend = null; $hook(); } if ($this->sendFailure !== null) { $e = $this->sendFailure; $this->sendFailure = null; throw $e; } if ($this->applyCommand) { $this->stateData = array_merge($this->stateData, $params); } return 'control-reply'; }
 }
 class FixtureProbe extends Client
 {
@@ -233,7 +234,54 @@ $h = heater(); unset($h->fake->stateData['temperature']);
 check(!$h->Refresh() && !$h->values['StateValid'], 'partial state does not leave old temperature falsely fresh');
 $h = heater(); $h->Refresh(); $GLOBALS['busy'] = true;
 check(!$h->Refresh() && $h->values['StateValid'], 'busy poll does not invalidate concurrent state');
-fails(fn() => $h->SetPower(true), 'concurrent command blocked'); $GLOBALS['busy'] = false;
+$h->SetPower(true);
+check($h->timers['CommandQueue'] === 500 && $h->fake->sent === [], 'concurrent command is deferred without exception or overlapping send');
+$GLOBALS['busy'] = false;
+$q = heater(); $q->Refresh(); $q->fake->applyCommand = true;
+$q->fake->duringSend = static function () use ($q): void { $q->SetPower(false); $q->SetPower(false); };
+$q->SetPower(true);
+check($q->fake->sent === [['poweron' => true]] && $q->timers['CommandQueue'] === 500, 'rapid opposite clicks wait without overlapping the active send');
+check($q->values['StateValid'] && $q->values['LastError'] === '', 'double click does not invalidate state or create an error');
+$q->RequestAction('RunCommandQueue', true);
+check($q->fake->sent === [['poweron' => true], ['poweron' => false]], 'latest queued power intent is sent once after active command');
+check(!$q->values['Power'] && $q->timers['CommandQueue'] === 0 && $q->values['LastCommand'] === 'Durch Gerätestatus bestätigt.', 'queued power finishes with reported state and stopped timer');
+$q->RequestAction('RunCommandQueue', true);
+check(count($q->fake->sent) === 2, 'stale command timer never replays completed work');
+$same = heater(); $same->Refresh(); $same->fake->applyCommand = true;
+$same->fake->duringSend = static function () use ($same): void { $same->SetPower(false); };
+$same->SetPower(false);
+check($same->fake->sent === [['poweron' => false]] && $same->timers['CommandQueue'] === 0, 'same in-flight power click is coalesced');
+$staleActive = heater(); $staleActive->Refresh();
+$staleActive->buffers['ActiveCommand'] = json_encode(['id' => 'stale', 'generation' => $staleActive->buffers['CommandGeneration'], 'params' => ['poweron' => true], 'expires' => microtime(true) - 1]);
+$staleActive->SetPower(true);
+check($staleActive->fake->sent === [['poweron' => true]], 'expired active marker cannot swallow a new explicit request');
+$reversed = heater(); $reversed->Refresh(); $reversed->fake->applyCommand = true;
+$reversed->fake->duringSend = static function () use ($reversed): void { $reversed->SetPower(false); $reversed->SetPower(true); };
+$reversed->SetPower(true); $reversed->RequestAction('RunCommandQueue', true);
+check($reversed->fake->sent === [['poweron' => true]] && $reversed->values['Power'], 'latest intent matching active command cancels queued opposite intent');
+$multiple = heater(); $multiple->Refresh(); $multiple->fake->applyCommand = true;
+$GLOBALS['busy'] = true; $multiple->SetMode(1); $multiple->SetTargetTemperature(20); $multiple->SetTargetTemperature(21); $GLOBALS['busy'] = false;
+check(count(json_decode($multiple->buffers['CommandQueue'], true)) === 2, 'queue keeps one latest value per distinct control');
+$multiple->RequestAction('RunCommandQueue', true); $multiple->RequestAction('RunCommandQueue', true);
+check($multiple->fake->sent === [['mode' => 'hotair'], ['ecolevel' => 70]], 'different controls retain order and latest setpoint without implicit power-on');
+$expired = heater(); $expired->Refresh(); $GLOBALS['busy'] = true; $expired->SetPower(true); $GLOBALS['busy'] = false;
+$waiting = json_decode($expired->buffers['CommandQueue'], true); $waiting['Power']['expires'] = microtime(true) - 1; $expired->buffers['CommandQueue'] = json_encode($waiting);
+$expired->RequestAction('RunCommandQueue', true);
+check($expired->fake->sent === [] && str_contains($expired->values['LastCommand'], 'abgelaufen'), 'expired queued heater command is discarded without execution');
+foreach (['ApplyChanges', 'ResetSession'] as $cancelAction) {
+    $cancelled = heater(); $cancelled->Refresh(); $GLOBALS['busy'] = true; $cancelled->SetPower(true); $GLOBALS['busy'] = false;
+    $cancelled->$cancelAction(); $cancelled->RequestAction('RunCommandQueue', true);
+    check($cancelled->fake->sent === [] && $cancelled->timers['CommandQueue'] === 0, $cancelAction . ' cancels unsent heater intent');
+}
+$lost = heater(); $lost->Refresh(); $lost->fake->sendFailure = new RuntimeException('socket timeout');
+$lost->fake->duringSend = static function () use ($lost): void { $lost->SetPower(false); };
+fails(fn() => $lost->SetPower(true), 'active uncertain send is still reported as an error');
+$lost->RequestAction('RunCommandQueue', true);
+check(count($lost->fake->sent) === 1 && !$lost->values['StateValid'] && $lost->timers['CommandQueue'] === 0, 'failed active send cancels queued work and never automatically resends');
+$queuedFailure = heater(); $queuedFailure->Refresh(); $GLOBALS['busy'] = true; $queuedFailure->SetPower(true); $GLOBALS['busy'] = false;
+$queuedFailure->fake->sendFailure = new RuntimeException('socket timeout');
+$queuedFailure->RequestAction('RunCommandQueue', true);
+check(str_contains($queuedFailure->values['LastError'], 'socket timeout') && $queuedFailure->timers['CommandQueue'] === 0, 'timer command failure is recorded without an uncaught exception');
 $h->fake->failure = new RuntimeException('fixture@example.invalid fixture-password fixture-token fixture-720S'); $h->Refresh();
 $diagnostics = $h->GetDiagnostics();
 foreach (['fixture@example.invalid', 'fixture-password', 'fixture-token', 'fixture-720S'] as $secret) {
@@ -283,7 +331,7 @@ function clickButton(TestHeater $instance, string $caption): string {
     finally { ob_end_clean(); }
 }
 $ui = heater();
-check(str_contains(clickButton($ui, 'Oberfläche testen'), '0.1.0-beta.7: Klick empfangen. Instanz 101'), 'pure console callback immediately prints version and instance');
+check(str_contains(clickButton($ui, 'Oberfläche testen'), '0.1.0-beta.8: Klick empfangen. Instanz 101'), 'pure console callback immediately prints version and instance');
 check(str_contains(clickButton($ui, 'Geräte suchen'), 'Klick empfangen'), 'actual search callback acknowledges before network work');
 check($ui->timers['FormAction'] === 1000 && $ui->attributes['Devices'] === '[]', 'search waits for background timer');
 check(str_contains(clickButton($ui, 'Status aktualisieren'), 'wartet bereits'), 'second form job does not replace queued search');
@@ -305,7 +353,7 @@ $rejectedUi = heater();
 check(str_contains(clickButton($rejectedUi, 'Geräte suchen'), 'Symcon meldet einen Aufruffehler')
     && $rejectedUi->timers['FormAction'] === 0, 'rejected kernel call reports failure without claiming a queued search');
 $GLOBALS['callbackReject'] = false;
-check(json_decode(clickButton($rejectedUi, 'Diagnose anzeigen'), true)['version'] === '0.1.0-beta.7', 'diagnostics returns JSON directly without action output');
+check(json_decode(clickButton($rejectedUi, 'Diagnose anzeigen'), true)['version'] === '0.1.0-beta.8', 'diagnostics returns JSON directly without action output');
 $ui = heater(); clickButton($ui, 'Geräte suchen'); $ui->ApplyChanges(); $ui->RequestAction('RunFormAction', true);
 check($ui->attributes['Devices'] === '[]' && $ui->timers['FormAction'] === 0, 'apply cancels waiting form work');
 $ui = new TestHeater(); clickButton($ui, 'Status aktualisieren'); $ui->RequestAction('RunFormAction', true);

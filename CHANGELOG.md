@@ -1,5 +1,13 @@
 # Änderungen
 
+## 0.1.0-beta.8 – 30.10.2026
+
+- Doppelklicks lösen bei belegter Abfrage-Sperre keine Exception mehr aus. Folgebefehle warten pro Einstellung mit dem jeweils letzten gewünschten Wert; unterschiedliche Einstellungen bleiben geordnet.
+- Identische laufende Befehle werden zusammengefasst. An–Aus–An während eines laufenden An-Befehls entfernt den überholten Aus-Wunsch.
+- Wartende Befehle verfallen nach 30 Sekunden und werden bei Änderungen übernehmen, Sitzungs-Reset oder Abfrage-/Übertragungsfehlern verworfen. Keine automatische Wiederholung unklar ausgeführter Befehle.
+- Separater kurzer Semaphore schützt die Warteschlange; Timer und direkte Aufrufe teilen dieselbe Ausführungssperre. Diagnose zeigt wartende Einstellungen.
+- Nutzer bestätigt die grundlegende Ein/Aus-Steuerung; Screenshot zeigt „Durch Gerätestatus bestätigt“. Die Mehrfachklick-Korrektur muss noch real geprüft werden.
+
 ## 0.1.0-beta.7 – 30.10.2026
 
 - Neue Instanzen verwenden standardmäßig App-API. Bestehende gespeicherte Einstellungen bleiben erhalten.

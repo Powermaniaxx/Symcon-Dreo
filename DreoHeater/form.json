@@ -2,7 +2,7 @@
     "elements": [
         {
             "type": "Label",
-            "caption": "Symcon Dreo 0.1.0-beta.7 – Vorabversion. Gerätesuche und Steuerung sind noch in Erprobung."
+            "caption": "Symcon Dreo 0.1.0-beta.8 – Vorabversion. Gerätesuche und Steuerung sind noch in Erprobung."
         },
         {
             "type": "Label",
@@ -89,7 +89,7 @@
             "type": "Button",
             "caption": "Oberfläche testen",
             "link": false,
-            "onClick": "echo \"Oberfläche 0.1.0-beta.7: Klick empfangen. Instanz \" . $id; "
+            "onClick": "echo \"Oberfläche 0.1.0-beta.8: Klick empfangen. Instanz \" . $id; "
         },
         {
             "type": "Button",
