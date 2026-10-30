@@ -1,4 +1,4 @@
-# Testprotokoll 1.0.0
+# Testprotokoll 1.1.0
 
 Datum: 30.10.2026. Lokale Laufzeit: PHP CLI 8.3.6.
 
@@ -7,6 +7,10 @@ Datum: 30.10.2026. Lokale Laufzeit: PHP CLI 8.3.6.
 | PHP-Syntax sämtlicher PHP-Dateien | Bestanden |
 | JSON-Parsing aller Konfigurationsdateien | Bestanden |
 | Protokoll-/Modultests mit synthetischen Antworten und SDK-Ersatz | 194 Prüfungen bestanden |
+| 39 Modellprofile, gemischtes Konto und beide Geräteabfrage-Routen | 241 Prüfungen in tests/models.php bestanden; synthetische Daten |
+| Geräteartabhängige Aktionen, Grenzen, unbekannte Werte und getrennte Feuchtigkeitsziele | Bestanden mit synthetischen Daten und SDK-Ersatz |
+| Alte 720S-Variablen, neue Variablen bei ApplyChanges, Typwechsel und Folgeklicks für Lüfter | Bestanden mit SDK-Ersatz |
+| Zusätzliche Modelle am physischen Gerät | Noch offen; keine reale Bestätigung aus den automatischen Tests abgeleitet |
 | Adresscache und unabhängige Hintergrundauflösung | 14 Prüfungen ohne öffentliches DNS bestanden |
 | Natives TLS mit zwischengespeicherter IP | Passender Host akzeptiert, falscher Host und nicht vertrauenswürdiges Zertifikat abgelehnt |
 | Kein HTTP-Statuslesen im Klick, Wiederaufnahme nach abgelaufenem Folgeauftrag | Bestanden mit SDK-Ersatz |
@@ -36,4 +40,6 @@ Datum: 30.10.2026. Lokale Laufzeit: PHP CLI 8.3.6.
 | Echter Symcon-9-Kernel und Visualisierung | beta.6: Installation, Auswahl und Statuslesen in Symcon beim Nutzer bestätigt; neue Voreinstellung in beta.7 noch nicht real geprüft |
 | GitHub-CI-Matrix PHP 8.2/8.3/8.4/8.5 und offizieller Symcon-Validator | Status des jeweiligen Commits unter [GitHub Actions](https://github.com/Powermaniaxx/Symcon-Dreo/actions) |
 
-Die Antworten und Heizgerätekonfigurationen sind synthetisch und beruhen auf Community- und Herstellerquellen. Die OpenAPI-Anfragereferenz wurde aus dem originalen Hersteller-Client aufgezeichnet. Sie beweisen nicht, dass jedes reale Konto oder jede Firmware dieselben Werte liefert. Die offene Hardwareprüfung in TESTPLAN.md bleibt von der Projektfreigabe 1.0.0 und einer späteren Store-Prüfung getrennt.
+Die Antworten und Heizgerätekonfigurationen sind synthetisch und beruhen auf Community- und Herstellerquellen. Die OpenAPI-Anfragereferenz wurde aus dem originalen Hersteller-Client aufgezeichnet. Sie beweisen nicht, dass jedes reale Konto oder jede Firmware dieselben Werte liefert. Die offene Hardwareprüfung in TESTPLAN.md bleibt von der Projektfreigabe 1.1.0 und einer späteren Store-Prüfung getrennt.
+
+Ab 1.1.0 steht ein erfolgreicher Status für die Auswertung des jeweiligen Profils, nicht für die Vollständigkeit aller denkbaren Gerätefunktionen. Ein gültiger Power-Wert ist Pflicht. Unbekannte oder fehlende optionale Werte werden ausgeblendet und sind nicht schaltbar; die alte 720S-Pflichtprüfung bleibt erhalten. Tests von tatsächlicher Haptik, Beschriftungen auf Geräten, Firmwarevarianten und physischer Wirkung der neuen Modelle stehen aus.

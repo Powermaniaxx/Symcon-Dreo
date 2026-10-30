@@ -93,7 +93,8 @@ class Client
             $path = '/api/v2/device/list';
             $data = $this->api($path, 'GET', []);
             $this->diagnostics['discovery'][] = ['path' => $path, 'counts' => Protocol::discoveryStats($data)];
-            return Protocol::devices($data);
+            // OpenAPI adapters are currently implemented only for the original 720S.
+            return array_values(array_filter(Protocol::devices($data), static fn(array $device): bool => $device['model'] === Protocol::MODEL));
         }
         $found = [];
         // Both routes are required: some EU accounts only return devices via the family route.
@@ -104,17 +105,33 @@ class Client
                         'pageNo' => (string) $page, 'pageSize' => '100']);
                 } catch (ApiException $e) {
                     if (in_array($e->getCode(), [404, 405], true)) { break; }
+                    if ($found !== [] && !in_array($e->getCode(), [401, 403, 100022], true)) {
+                        $this->diagnostics['incompleteDiscovery'] = true;
+                        $this->diagnostics['discoveryWarnings'][] = ['path' => $path, 'code' => $e->getCode()];
+                        break;
+                    }
                     throw $e;
                 }
-                foreach (Protocol::devices($data) as $device) { $found[$device['serial']] = $device; }
+                foreach (Protocol::devices($data) as $device) {
+                    $previous = $found[$device['serial']] ?? null;
+                    if ($previous !== null && $previous['model'] !== $device['model']) { throw new ApiException('Widersprüchliche Modellangaben zwischen den Gerätelisten.'); }
+                    // A second route may omit metadata that the family route already supplied.
+                    if ($previous !== null) {
+                        $device['name'] = $previous['name'];
+                        foreach (['controlsConf', 'heaterConfig'] as $key) {
+                            if (($device[$key] ?? []) === []) { $device[$key] = $previous[$key] ?? []; }
+                        }
+                    }
+                    $found[$device['serial']] = $device;
+                }
                 $this->diagnostics['discovery'][] = ['path' => $path, 'page' => $page, 'counts' => Protocol::discoveryStats($data)];
                 $pages = (int) ($data['totalPage'] ?? 1);
                 if ($pages > 10) { throw new ApiException('Geräteliste hat mehr als zehn Seiten; nicht vollständig eingelesen.'); }
                 if ($page >= $pages) { break; }
             }
-            if ($found !== []) { return array_values($found); }
+            // Some accounts distribute devices across the two routes. Merge instead of stopping at the first heater.
         }
-        return [];
+        return array_values($found);
     }
 
     public function state(string $serial): array

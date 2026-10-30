@@ -1,5 +1,15 @@
 # Änderungen
 
+## 1.1.0 – 30.10.2026
+
+- Allgemeiner Name „Dreo Modul“ und 39 explizite Modellprofile für Heizgeräte, Ventilatoren, Luftreiniger und Luftbefeuchter. Geräte außerhalb dieser Liste werden nicht freigeschaltet.
+- Modellabhängige Variablen, Grenzen und Betriebsarten; fehlende oder unbekannte optionale Werte werden ausgeblendet und sind nicht schaltbar. Ein/Aus muss gültig gemeldet sein.
+- Lüfterstufen, horizontales Schwenken, Feuchtigkeitsziel und Nebelstufe mit eigenen Skriptfunktionen. Auto- und Schlaf-Feuchtigkeitsziele bleiben getrennt; vor Versand wird die aktuelle Zuordnung erneut geprüft.
+- Begrenzung alter DR-HTF007S auf vier Stufen, niedrigere Solltemperaturgrenze für DR-HSH017BS und passende Auto-Direktive für die enthaltenen Luftreiniger. Keine automatische Aktivierung der Reinigung am DR-HAP010S.
+- GUIDs, Klasse, Präfix und bestehende 720S-Variablen bleiben erhalten. Zusätzliche Variablen werden bei ApplyChanges angelegt; vorhandene Variablen werden nicht gelöscht.
+- OpenAPI bleibt experimentell und auf den ursprünglichen 720S-Adapter beschränkt. Für die weiteren Modelle App-API verwenden.
+- Zusätzliche Protokoll- und Modultests mit gemischtem Konto, allen Profilen, Fehlwerten, Zustandsbestätigung, Folgeklicks und Gerätetypwechsel. Die weiteren Modelle sind noch nicht am echten Gerät bestätigt; keine Zusage für jedes App-Gerät.
+
 ## 1.0.0 – 30.10.2026
 
 - Erste regulär versionierte Projektfreigabe für Dreo 720S / DR-HSH040S ab Symcon 9.0, auf Basis des zuletzt getesteten App-API-Zugangs. Eine Store-Veröffentlichung erfolgt erst nach Einreichung und Prüfung durch Symcon.

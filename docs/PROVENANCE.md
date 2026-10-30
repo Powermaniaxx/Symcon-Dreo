@@ -16,7 +16,7 @@ Heizgeräte-Felder und das Schema der vom Server gelieferten Modellkonfiguration
 
 Lizenz des Hersteller-Clients: docs/LICENSE-pydreo-client.txt, Copyright 2025 Dreo Team, MIT. Es wird keine offizielle Unterstützung oder Prüfung dieses Symcon-Moduls durch Dreo behauptet. Der im SDK vorbereitete lokale Provider enthält keine nutzbare echte LAN-Anbindung.
 
-## Bisherige App-API als auswählbare Alternative
+## App-API als regulärer Zugang
 
 Die eigenständige PHP-Implementierung orientiert sich an öffentlich dokumentiertem Verhalten der MIT-lizenzierten Community-Integration hass-dreo. Die Bibliothek benötigt deren Python-Code nicht zur Laufzeit.
 
@@ -43,3 +43,13 @@ Symcon-SDK-Referenzen:
 
 Die Referenz bestätigt das Protokolldesign, ersetzt aber keinen Test dieses PHP-Moduls im echten Symcon-Kernel und am Gerät.
 
+
+## Mehrere Modelle ab Version 1.1.0
+
+Die expliziten Profile und ihre Befehle wurden am 30.10.2026 gegen denselben festen Community-Commit ae10a5ff727d1696c9d6da7876e631601ebe37c6 geprüft:
+
+https://github.com/JeffSteinbok/hass-dreo/tree/ae10a5ff727d1696c9d6da7876e631601ebe37c6/custom_components/dreo/pydreo
+
+Zusätzlich gelesen: models.py, pydreofanbase.py, pydreotowerfan.py, pydreoaircirculator.py, pydreoairpurifier.py, pydreohumidifier.py und pydreoheater.py. Die vorhandenen MIT-Lizenzhinweise bleiben erhalten. Die PHP-Implementierung lädt keinen Python-Code zur Laufzeit nach. Die Quelle belegt die Protokollzuordnung, nicht die Funktion dieses Symcon-Moduls am jeweiligen realen Gerät.
+
+Wesentliche Abweichungen von einer pauschalen Übernahme: nur explizite Modelle; keine Präfix-Freigabe für unbekannte Geräte; keine Klimageräte, Deckenventilatoren oder HSH016S-Kombigeräte; keine Winkel/RGB/Timer/Filterresets; keine impliziten Einschaltbefehle. Für HTF007S bleibt ohne eindeutige Metadaten die gemeinsame Vier-Stufen-Grenze statt acht als Standard. Schlaf- und Auto-Feuchtigkeitsziele werden vor Versand anhand des zuletzt gelesenen Modus überprüft. Die bekannten HPF007S/008S/020S-Modekorrekturen Natur=2 und Auto=4 werden berücksichtigt.

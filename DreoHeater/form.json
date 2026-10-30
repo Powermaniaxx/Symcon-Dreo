@@ -2,11 +2,11 @@
     "elements": [
         {
             "type": "Label",
-            "caption": "Dreo 720S · Version 1.0.0"
+            "caption": "Dreo Modul · Version 1.1.0"
         },
         {
             "type": "Label",
-            "caption": "Unterstützt: 720S (DR-HSH040S). Verbindung über Dreo-Cloud. Keine lokale LAN-Steuerung."
+            "caption": "39 Modellprofile für Heizgeräte, Ventilatoren, Luftreiniger und Luftbefeuchter. Funktionen hängen von Modell und Gerätestatus ab. Keine lokale LAN-Steuerung."
         },
         {
             "type": "CheckBox",
@@ -29,7 +29,7 @@
             "caption": "Cloud-Zugang",
             "options": [
                 {
-                    "caption": "App-API (720S, Standard)",
+                    "caption": "App-API (Standard)",
                     "value": "app"
                 },
                 {
@@ -40,7 +40,7 @@
         },
         {
             "type": "Label",
-            "caption": "Beim 720S sind App-API-Anmeldung, Erkennung, Statuslesen und grundlegendes Ein/Aus am EU-Gerät bestätigt. OpenAPI bleibt experimentell; dort scheiterte der bisherige Login mit HTTP 302."
+            "caption": "Am echten EU-Gerät bestätigt: 720S. Weitere Modellprofile sind anhand der Protokollreferenz umgesetzt und automatisch geprüft; reale Tests stehen aus. OpenAPI bleibt experimentell und auf den 720S beschränkt."
         },
         {
             "type": "Select",
@@ -81,7 +81,7 @@
         },
         {
             "type": "Label",
-            "caption": "Ein/Aus ist unabhängig von Modus und Heizstufe. Solltemperatur wirkt im ECO-Modus."
+            "caption": "Angezeigt werden die Funktionen des gewählten Modells. Messwerte und Schaltbestätigungen stammen aus dem gemeldeten Gerätestatus. Pro Instanz ein Gerät."
         }
     ],
     "actions": [
@@ -89,7 +89,7 @@
             "type": "Button",
             "caption": "Oberfläche testen",
             "link": false,
-            "onClick": "echo \"Oberfläche 1.0.0: Klick empfangen. Instanz \" . $id; "
+            "onClick": "echo \"Oberfläche 1.1.0: Klick empfangen. Instanz \" . $id; "
         },
         {
             "type": "Button",

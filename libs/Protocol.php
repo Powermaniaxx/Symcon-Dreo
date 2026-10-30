@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace SymconDreo;
 
+require_once __DIR__ . '/ModelCatalog.php';
+
 final class Protocol
 {
     public const MODEL = 'DR-HSH040S';
@@ -38,10 +40,14 @@ final class Protocol
         $found = [];
         $walk = static function (array $node) use (&$walk, &$found): void {
             $sn = self::serial($node);
-            if (self::model($node) === self::MODEL && is_string($sn) && $sn !== '') {
-                $found[$sn] = ['serial' => $sn, 'model' => self::MODEL,
-                    'name' => self::firstString($node, ['deviceName', 'name', 'nickname', 'alias']) ?? 'Dreo 720S',
-                    'heaterConfig' => is_array($node['config']['heater_entity_config'] ?? null) ? $node['config']['heater_entity_config'] : ($found[$sn]['heaterConfig'] ?? [])];
+            $model = self::model($node);
+            if ($model !== null && ModelCatalog::profile($model) !== null && is_string($sn) && $sn !== '') {
+                $previous = $found[$sn] ?? [];
+                if (isset($previous['model']) && $previous['model'] !== $model) { throw new \RuntimeException('Widersprüchliche Modellangaben in der Geräteliste.'); }
+                $found[$sn] = ['serial' => $sn, 'model' => $model,
+                    'name' => self::firstString($node, ['deviceName', 'name', 'nickname', 'alias']) ?? ($previous['name'] ?? ($model === self::MODEL ? 'Dreo 720S' : $model)),
+                    'controlsConf' => is_array($node['controlsConf'] ?? null) ? $node['controlsConf'] : ($previous['controlsConf'] ?? []),
+                    'heaterConfig' => is_array($node['config']['heater_entity_config'] ?? null) ? $node['config']['heater_entity_config'] : ($previous['heaterConfig'] ?? [])];
             }
             foreach ($node as $child) {
                 if (is_array($child)) { $walk($child); }
@@ -58,7 +64,7 @@ final class Protocol
         $walk = static function (array $node) use (&$walk, &$stats): void {
             if (is_string(self::model($node))) {
                 ++$stats['recordsWithModel'];
-                if (self::model($node) === self::MODEL) {
+                if (ModelCatalog::profile(self::model($node)) !== null) {
                     ++$stats['supportedRecords'];
                     $sn = self::serial($node);
                     ++$stats[is_string($sn) && $sn !== '' ? 'supportedUsable' : 'supportedMissingSerial'];

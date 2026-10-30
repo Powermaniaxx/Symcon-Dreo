@@ -7,6 +7,7 @@ use SymconDreo\Client;
 use SymconDreo\Protocol;
 use SymconDreo\ApiException;
 use SymconDreo\EndpointCache;
+use SymconDreo\ModelCatalog;
 
 class DreoHeater extends IPSModuleStrict
 {
@@ -44,6 +45,7 @@ class DreoHeater extends IPSModuleStrict
         $this->RegisterVariableString('LastCommand', 'Letzter Schaltauftrag', [], 100);
         $this->RegisterVariableString('LastError', 'Letzter Fehler', [], 110);
         $this->RegisterVariableString('ConnectionTestStatus', 'Verbindungstest', [], 120);
+        $this->registerAdditionalVariables();
         $this->RegisterMessage(0, IPS_KERNELMESSAGE);
         $this->actions(false);
     }
@@ -51,6 +53,8 @@ class DreoHeater extends IPSModuleStrict
     public function ApplyChanges(): void
     {
         parent::ApplyChanges();
+        $this->registerAdditionalVariables();
+        $this->showFields([]);
         $this->SetTimerInterval('EndpointWarmup', 0);
         $this->cancelCommandQueue();
         $this->SetTimerInterval('Refresh', 0);
@@ -69,6 +73,7 @@ class DreoHeater extends IPSModuleStrict
         $this->SetBuffer('Pending', '');
         $this->SetBuffer('Failures', '0');
         $this->SetBuffer('VerifiedSerial', '');
+        $this->SetBuffer('SelectedDevice', '');
         $this->SetValue('StateValid', false);
         $this->SetValue('HeatingKnown', false);
         $this->SetValue('Online', false);
@@ -83,7 +88,7 @@ class DreoHeater extends IPSModuleStrict
             $this->SetStatus(201);
             return;
         }
-        $this->SetSummary('Dreo 720S · ' . $this->ReadPropertyString('Region'));
+        $this->SetSummary('Dreo · ' . $this->ReadPropertyString('Region'));
         if (IPS_GetKernelRunlevel() === KR_READY) { $this->SetTimerInterval('Refresh', 1000); $this->SetTimerInterval('EndpointWarmup', 1000); }
         $this->SetStatus(101);
     }
@@ -117,8 +122,10 @@ class DreoHeater extends IPSModuleStrict
             $this->UpdateFormField('Serial', 'options', json_encode($this->deviceOptions(), JSON_THROW_ON_ERROR));
             $this->SetValue('LastError', '');
             $this->feedback($devices === []
-                ? 'Anmeldung erfolgreich, aber keine verwendbaren 720S-Geräte geliefert. Unter „Diagnose anzeigen“ stehen die Abfrageergebnisse ohne Zugangsdaten.'
-                : count($devices) . ' Gerät(e) gefunden. Gerät auswählen und Änderungen übernehmen.');
+                ? 'Anmeldung erfolgreich, aber keine Geräte aus der Modellliste geliefert. Unter „Diagnose anzeigen“ stehen die Abfrageergebnisse ohne Zugangsdaten. OpenAPI erkennt derzeit nur den 720S.'
+                : count($devices) . ' Gerät(e) gefunden. Gerät auswählen und Änderungen übernehmen.'
+                    . ((json_decode($this->GetBuffer('DiscoveryDiagnostics'), true) ?? [])['incompleteDiscovery'] ?? false
+                        ? ' Eine Geräteliste konnte nicht vollständig gelesen werden; Diagnose prüfen.' : ''));
             if ($this->ReadPropertyBoolean('Open') && $this->ReadPropertyString('Serial') === '') { $this->SetStatus(201); }
             return true;
         });
@@ -164,8 +171,10 @@ class DreoHeater extends IPSModuleStrict
             case 'RunCommandQueue': $this->SetTimerInterval('CommandQueue', 0); $this->processCommandQueue(); return;
             case 'WarmEndpoints': $this->warmEndpoints(); return;
         }
-        $params = Protocol::command($Ident, $Value);
-        if (!$this->enqueueCommand($Ident, $params)) { return; }
+        if (!$this->GetValue('StateValid')) { throw new RuntimeException('Zuerst einen gültigen Gerätestatus abrufen.'); }
+        $device = $this->selectedDevice();
+        $params = ModelCatalog::command($device['model'], json_decode($this->GetBuffer('State'), true) ?? [], $this->modelMetadata($device), $Ident, $Value);
+        if (!$this->enqueueCommand($Ident, $params, $Value)) { return; }
         if ($this->processCommandQueue() === false) { throw new RuntimeException((string) $this->GetValue('LastError')); }
     }
 
@@ -197,6 +206,9 @@ class DreoHeater extends IPSModuleStrict
                 if (!$this->GetValue('StateValid')) { throw new RuntimeException('Zuerst einen gültigen Gerätestatus abrufen.'); }
                 $serial = $this->ReadPropertyString('Serial');
                 $raw = json_decode($this->GetBuffer('State'), true) ?? [];
+                $device = $this->selectedDevice();
+                $currentParams = ModelCatalog::command($device['model'], $raw, $this->modelMetadata($device), $request['ident'], $request['value']);
+                if ($currentParams !== $params) { throw new RuntimeException('Gerätefunktion hat sich geändert; Schaltauftrag verworfen.'); }
                 if (isset($raw['connected']) && in_array($raw['connected'], [false, 0], true)) {
                     throw new RuntimeException('Das Gerät wurde als offline gemeldet.');
                 }
@@ -236,9 +248,9 @@ class DreoHeater extends IPSModuleStrict
         try { return $operation(); } finally { IPS_SemaphoreLeave($lock); }
     }
 
-    private function enqueueCommand(string $ident, array $params): bool
+    private function enqueueCommand(string $ident, array $params, mixed $value): bool
     {
-        return $this->queueLocked(function () use ($ident, $params): bool {
+        return $this->queueLocked(function () use ($ident, $params, $value): bool {
             $queue = json_decode($this->GetBuffer('CommandQueue'), true) ?? [];
             $active = json_decode($this->GetBuffer('ActiveCommand'), true) ?? [];
             $generation = $this->GetBuffer('CommandGeneration');
@@ -251,7 +263,7 @@ class DreoHeater extends IPSModuleStrict
             }
             $created = microtime(true);
             $queue[$ident] = ['id' => bin2hex(random_bytes(8)), 'ident' => $ident, 'params' => $params,
-                'created' => $created, 'expires' => $created + 30, 'generation' => $generation];
+                'value' => $value, 'created' => $created, 'expires' => $created + 30, 'generation' => $generation];
             $this->SetBuffer('CommandQueue', json_encode($queue, JSON_THROW_ON_ERROR));
             $this->SetTimerInterval('CommandQueue', 1);
             $this->SetValue('LastCommand', 'Schaltauftrag vorgemerkt; je Einstellung gilt der letzte Wunsch.');
@@ -272,6 +284,10 @@ class DreoHeater extends IPSModuleStrict
     public function SetMode(int $Value): void { $this->RequestAction('Mode', $Value); }
     public function SetHeatLevel(int $Value): void { $this->RequestAction('HeatLevel', $Value); }
     public function SetTargetTemperature(float $Value): void { $this->RequestAction('TargetTemperature', $Value); }
+    public function SetFanSpeed(int $Value): void { $this->RequestAction('FanSpeed', $Value); }
+    public function SetOscillation(bool $Value): void { $this->RequestAction('Oscillation', $Value); }
+    public function SetTargetHumidity(int $Value): void { $this->RequestAction('TargetHumidity', $Value); }
+    public function SetMistLevel(int $Value): void { $this->RequestAction('MistLevel', $Value); }
 
     public function ResetSession(): void
     {
@@ -290,7 +306,11 @@ class DreoHeater extends IPSModuleStrict
     public function GetDiagnostics(): string
     {
         // Deliberate allowlist: no account name, serial, password, bearer token or raw API data.
-        return json_encode(['module' => 'SymconDreo', 'version' => '1.0.0', 'model' => Protocol::MODEL,
+        $device = json_decode($this->GetBuffer('SelectedDevice'), true) ?? [];
+        return json_encode(['module' => 'SymconDreo', 'version' => '1.1.0', 'model' => $device['model'] ?? null,
+            'deviceType' => ModelCatalog::profile($device['model'] ?? '')['type'] ?? null,
+            'supportedModelCount' => count(ModelCatalog::all()),
+            'availableControls' => json_decode($this->GetBuffer('AvailableControls'), true) ?? [],
             'region' => $this->ReadPropertyString('Region'), 'active' => $this->ReadPropertyBoolean('Open'),
             'cloudAPI' => $this->ReadPropertyString('CloudAPI'),
             'stateValid' => $this->GetValue('StateValid'), 'lastUpdateUtc' => $this->GetValue('LastUpdate'),
@@ -509,6 +529,20 @@ class DreoHeater extends IPSModuleStrict
         });
     }
 
+    private function selectedDevice(): array
+    {
+        $device = json_decode($this->GetBuffer('SelectedDevice'), true) ?? [];
+        if (($device['serial'] ?? '') !== $this->ReadPropertyString('Serial') || ModelCatalog::profile($device['model'] ?? '') === null) {
+            throw new RuntimeException('Zuerst das gewählte Gerät und seinen Status abrufen.');
+        }
+        return $device;
+    }
+
+    private function modelMetadata(array $device): array
+    {
+        return ['controlsConf' => $device['controlsConf'] ?? [], 'apiMode' => $this->ReadPropertyString('CloudAPI')];
+    }
+
     private function verifySelectedDevice(): void
     {
         $serial = $this->ReadPropertyString('Serial');
@@ -516,45 +550,65 @@ class DreoHeater extends IPSModuleStrict
         $devices = $this->discoverWithDiagnostics();
         $this->WriteAttributeString('Devices', json_encode($devices, JSON_THROW_ON_ERROR));
         foreach ($devices as $device) {
-            if ($device['serial'] === $serial && $device['model'] === Protocol::MODEL) {
-                $this->SetBuffer('VerifiedSerial', $serial); return;
+            if ($device['serial'] === $serial && ModelCatalog::profile($device['model']) !== null) {
+                if ($this->ReadPropertyString('CloudAPI') === 'openapi' && $device['model'] !== Protocol::MODEL) {
+                    throw new RuntimeException('Für dieses Modell App-API wählen. OpenAPI ist nur für den 720S implementiert.');
+                }
+                $previous = json_decode($this->GetBuffer('SelectedDevice'), true) ?? [];
+                if (($previous['model'] ?? '') !== $device['model']) {
+                    $this->SetValue('StateValid', false);
+                    $this->actions(false);
+                }
+                $this->SetBuffer('SelectedDevice', json_encode($device, JSON_THROW_ON_ERROR));
+                $this->SetBuffer('VerifiedSerial', $serial);
+                $this->SetSummary($device['model'] . ' · ' . $this->ReadPropertyString('Region'));
+                return;
             }
         }
-        throw new RuntimeException('Das gewählte Gerät wurde in diesem Konto nicht als unterstützter 720S gefunden.');
+        throw new RuntimeException('Das gewählte Gerät wurde in diesem Konto nicht als unterstütztes Modell gefunden.');
+    }
+
+    private function registerAdditionalVariables(): void
+    {
+        $this->RegisterVariableInteger('FanSpeed', 'Lüfterstufe', ['PRESENTATION' => VARIABLE_PRESENTATION_SLIDER,
+            'MIN' => 1, 'MAX' => 12, 'STEP_SIZE' => 1], 31);
+        $this->RegisterVariableBoolean('Oscillation', 'Schwenken', ['PRESENTATION' => VARIABLE_PRESENTATION_SWITCH], 32);
+        $this->RegisterVariableFloat('CurrentHumidity', 'Luftfeuchtigkeit', ['PRESENTATION' => VARIABLE_PRESENTATION_VALUE_PRESENTATION,
+            'SUFFIX' => ' %', 'DIGITS' => 1], 51);
+        $this->RegisterVariableInteger('TargetHumidity', 'Soll-Luftfeuchtigkeit', ['PRESENTATION' => VARIABLE_PRESENTATION_SLIDER,
+            'MIN' => 30, 'MAX' => 90, 'STEP_SIZE' => 1, 'SUFFIX' => ' %'], 41);
+        $this->RegisterVariableInteger('MistLevel', 'Nebelstufe (Gerätewert)', ['PRESENTATION' => VARIABLE_PRESENTATION_SLIDER,
+            'MIN' => 0, 'MAX' => 6, 'STEP_SIZE' => 1], 33);
+    }
+
+    private function showFields(array $fields): void
+    {
+        foreach (ModelCatalog::OPTIONAL as $ident) {
+            $visible = isset($fields[$ident]) || ($ident === 'HeatingKnown' && isset($fields['Heating']));
+            IPS_SetHidden($this->GetIDForIdent($ident), !$visible);
+        }
+        if (isset($fields['Mode'])) {
+            $this->RegisterVariableInteger('Mode', 'Betriebsart', $this->enumPresentation($fields['Mode']['labels']), 20);
+        }
+        foreach (['TargetTemperature' => ['Solltemperatur', ' °C', 40], 'FanSpeed' => ['Lüfterstufe', '', 31],
+            'TargetHumidity' => ['Soll-Luftfeuchtigkeit', ' %', 41]] as $ident => [$caption, $suffix, $position]) {
+            if (!isset($fields[$ident])) { continue; }
+            $presentation = ['PRESENTATION' => VARIABLE_PRESENTATION_SLIDER, 'MIN' => $fields[$ident]['min'],
+                'MAX' => $fields[$ident]['max'], 'STEP_SIZE' => 1, 'SUFFIX' => $suffix, 'DIGITS' => 0];
+            if ($ident === 'TargetTemperature') { $this->RegisterVariableFloat($ident, $caption, $presentation, $position); }
+            else { $this->RegisterVariableInteger($ident, $caption, $presentation, $position); }
+        }
     }
 
     private function refreshState(): void
     {
         $state = $this->authenticated(fn(Client $client): array => $client->state($this->ReadPropertyString('Serial')));
-        if (!array_key_exists('poweron', $state) || !in_array($state['poweron'], [true, false, 0, 1], true)) {
-            throw new RuntimeException('Gerätestatus enthält keinen gültigen Ein/Aus-Wert.');
-        }
-        foreach (['temperature', 'ecolevel', 'htalevel'] as $key) {
-            if (!isset($state[$key]) || !is_numeric($state[$key]) || !is_finite((float) $state[$key])) {
-                throw new RuntimeException('Gerätestatus enthält keinen gültigen Wert für ' . $key . '.');
-            }
-        }
-        if ($this->ReadPropertyString('CloudAPI') === 'app' && (!isset($state['ptcon']) || !in_array($state['ptcon'], [true, false, 0, 1], true))) {
-            throw new RuntimeException('Gerätestatus enthält keinen gültigen Heizstatus.');
-        }
-        if ((bool) $state['poweron'] && !in_array($state['mode'] ?? null, Protocol::MODES, true)) {
-            throw new RuntimeException('Gerätestatus enthält einen unbekannten Betriebsmodus.');
-        }
+        $device = $this->selectedDevice();
+        $fields = ModelCatalog::fields($device['model'], $state, $this->modelMetadata($device));
+        $this->showFields($fields);
         $this->SetBuffer('State', json_encode($state, JSON_THROW_ON_ERROR));
-        $this->SetValue('Power', (bool) $state['poweron']);
-        $mode = array_search($state['mode'] ?? null, Protocol::MODES, true);
-        if ($mode !== false) { $this->SetValue('Mode', $mode); }
-        if (isset($state['htalevel']) && is_numeric($state['htalevel'])) { $this->SetValue('HeatLevel', (int) $state['htalevel']); }
-        if (isset($state['temperature']) && is_numeric($state['temperature'])) {
-            $this->SetValue('CurrentTemperature', Protocol::celsius((float) $state['temperature']));
-        }
-        if (isset($state['ecolevel']) && is_numeric($state['ecolevel'])) {
-            $this->SetValue('TargetTemperature', Protocol::targetCelsius((float) $state['ecolevel']));
-        }
-        if (isset($state['ptcon']) && in_array($state['ptcon'], [true, false, 0, 1], true)) {
-            $this->SetValue('Heating', (bool) $state['ptcon']);
-        }
-        $this->SetValue('HeatingKnown', isset($state['ptcon']) && in_array($state['ptcon'], [true, false, 0, 1], true));
+        foreach ($fields as $ident => $field) { $this->SetValue($ident, $field['value']); }
+        $this->SetValue('HeatingKnown', isset($fields['Heating']));
         $online = isset($state['connected']) && in_array($state['connected'], [true, 1], true);
         $offline = isset($state['connected']) && in_array($state['connected'], [false, 0], true);
         $this->SetValue('Online', $online);
@@ -575,11 +629,13 @@ class DreoHeater extends IPSModuleStrict
                 $this->SetBuffer('Pending', '');
             }
         }
-        $map = ['Power' => 'poweron', 'Mode' => 'mode', 'HeatLevel' => 'htalevel', 'TargetTemperature' => 'ecolevel'];
-        foreach ($map as $ident => $key) {
-            $writable = $ident !== 'Mode' || $this->ReadPropertyString('CloudAPI') !== 'openapi' || ($state['_modeWritable'] ?? false);
-            $this->MaintainAction($ident, !$offline && isset($state[$key]) && $writable);
+        $available = [];
+        foreach (ModelCatalog::CONTROLS as $ident) {
+            $writable = isset($fields[$ident]) && $fields[$ident]['kind'] !== 'read';
+            $this->MaintainAction($ident, !$offline && $writable);
+            if ($writable) { $available[] = $ident; }
         }
+        $this->SetBuffer('AvailableControls', json_encode($available, JSON_THROW_ON_ERROR));
         $this->SetStatus($offline ? 204 : 102);
         $this->feedback('Gerätestatus erfolgreich aktualisiert.');
         $this->SetTimerInterval('Refresh', $this->interval() * 1000);
@@ -592,7 +648,7 @@ class DreoHeater extends IPSModuleStrict
         }
         if (!in_array($this->ReadPropertyString('Region'), ['EU', 'NA'], true)) { throw new RuntimeException('Region EU oder NA wählen.'); }
         if (!in_array($this->ReadPropertyString('CloudAPI'), ['openapi', 'app'], true)) { throw new RuntimeException('Cloud-API auswählen.'); }
-        if ($requireSerial && $this->ReadPropertyString('Serial') === '') { throw new RuntimeException('Geräte suchen, einen 720S auswählen und Änderungen übernehmen.'); }
+        if ($requireSerial && $this->ReadPropertyString('Serial') === '') { throw new RuntimeException('Geräte suchen, ein unterstütztes Gerät auswählen und Änderungen übernehmen.'); }
         if ($this->ReadPropertyInteger('Interval') < 30 || $this->ReadPropertyInteger('Interval') > 3600) {
             throw new RuntimeException('Abfrageintervall: 30 bis 3600 Sekunden.');
         }
@@ -644,7 +700,8 @@ class DreoHeater extends IPSModuleStrict
 
     private function actions(bool $enabled): void
     {
-        foreach (['Power', 'Mode', 'HeatLevel', 'TargetTemperature'] as $ident) { $this->MaintainAction($ident, $enabled); }
+        foreach (ModelCatalog::CONTROLS as $ident) { $this->MaintainAction($ident, $enabled); }
+        if (!$enabled) { $this->SetBuffer('AvailableControls', '[]'); }
     }
 
     private function feedback(string $message): void

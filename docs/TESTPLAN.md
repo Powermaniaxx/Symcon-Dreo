@@ -45,3 +45,9 @@ Die Entwicklungsumgebung verwendet keine echten Dreo-Zugangsdaten oder Geräte. 
 | Diagnose und Debug | Keine Kontodaten, Passwörter, Token oder Seriennummern | Offen |
 
 Nach jeder realen Prüfung Version, Region, Firmware, Datum und Ergebnis ergänzen. Die Projektversion 1.0.0 kennzeichnet die vom Projektinhaber angeforderte reguläre Freigabe. Sie erklärt diese offenen Hardwareprüfungen nicht nachträglich für bestanden und belegt noch keine Annahme im Symcon Module Store. Bei späteren API- oder Firmwareänderungen betroffene Prüfungen wiederholen.
+
+## Zusätzliche Modelle ab 1.1.0 – reale Prüfungen offen
+
+Für jedes zusätzliche Modell sind mit Besitzerfreigabe Erkennung, Modell/Firmware/Region, echte Statuswerte und alle angebotenen Aktionen am physischen Gerät zu prüfen. Insbesondere müssen Modusbeschriftung, native Stufen, Power-Schlüssel, Schwenkverhalten, Temperatur-Offset und Feuchtigkeitsziel im Auto-/Schlafmodus mit der App verglichen werden. Aus einem erfolgreichen API-Aufruf allein folgt keine physische Bestätigung.
+
+Die Modellliste trennt implementierte Profile von real bestätigten Geräten. Synthetische Tests für alle Profile ersetzen diese offenen Prüfungen nicht. Ein möglicher Stable-Review durch Symcon ist ebenfalls kein Hardwaretest.

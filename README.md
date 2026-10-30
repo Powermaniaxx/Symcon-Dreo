@@ -1,78 +1,66 @@
-# Dreo 720S
+# Dreo Modul für Symcon
 
-Version **1.0.0** verbindet den **Dreo 720S (DR-HSH040S)** direkt mit **Symcon ab Version 9.0**. Benötigt werden ein eigenes Dreo-Konto, ein bereits in der Dreo-App eingerichteter Heizer und Internetzugang. Home Assistant, MQTT und zusätzliche Dienste sind nicht erforderlich.
+Version **1.1.0** verbindet unterstützte Dreo-Geräte direkt über die Dreo-Cloud mit **Symcon ab Version 9.0**. Enthalten sind **39 konkrete Modellprofile** für Heizgeräte, Ventilatoren, Luftreiniger und Luftbefeuchter. Benötigt werden ein eigenes Dreo-Konto, ein bereits in der Dreo-App eingerichtetes Gerät und Internetzugang. Home Assistant, MQTT und weitere Dienste sind nicht erforderlich.
 
-Dies ist ein unabhängiges Community-Modul. Es stammt nicht von Dreo. Der reguläre Zugang verwendet die Dreo-App-Cloud; eine lokale LAN-Steuerung ist nicht enthalten.
+**Die Nutzung in der Dreo-App allein garantiert keine Unterstützung.** Maßgeblich ist die [Modellliste](docs/SUPPORTED_MODELS.md). Bisher sind EU-Anmeldung, Erkennung, Statuslesen und grundlegendes Ein/Aus am echten **720S / DR-HSH040S** bestätigt. Die zusätzlichen Profile sind anhand der Protokollreferenz implementiert und mit synthetischen Daten geprüft; reale Tests dieser Modelle stehen aus. Dies ist ein unabhängiges Community-Modul und kein offizielles Dreo-Produkt.
 
 ## Funktionen
 
-| Funktion | Verhalten |
+| Geräteart | Modellabhängige Funktionen |
 | --- | --- |
-| Ein/Aus | Eigener Schalter, unabhängig von Betriebsart und Heizstufe |
-| Betriebsart | Nur Lüften, Heizen und ECO |
-| Heizstufe | H1, H2 und H3 |
-| Solltemperatur | Ganze °C von 5 bis 35; wirksam im ECO-Modus |
-| Raumtemperatur | Anzeige in °C mit einer Nachkommastelle |
-| Heizstatus | Vom Gerät gemeldeter Zustand des Heizelements; nur lesend |
-| Verfügbarkeit | Online, offline oder unbekannt entsprechend der Cloud-Antwort |
-| Aktualisierung | Alle 30 Sekunden; einstellbar von 30 bis 3600 Sekunden |
-| Mehrfachklicks | Gleiche laufende Befehle werden zusammengefasst; pro Einstellung gilt der zuletzt vorgemerkte Wunsch |
-| Rückmeldung | Cloud-Annahme und Bestätigung durch gelesenen Gerätestatus werden getrennt angezeigt |
+| Heizgeräte | Ein/Aus, Lüften/Heizen/ECO, H1–H3, Soll- und Raumtemperatur in Celsius, Heizstatus |
+| Ventilatoren | Ein/Aus, native Lüfterstufen, Betriebsart, horizontales Schwenken |
+| Luftreiniger | Ein/Aus, Lüfterstufen, Auto/Manuell/Schlafen/Turbo |
+| Luftbefeuchter | Ein/Aus, Luftfeuchtigkeit, Soll-Feuchtigkeit, Nebelstufe, bekannte Betriebsarten |
 
-Unterstützt wird ausschließlich **DR-HSH040S**. Andere Modelle werden ausgefiltert. Pro Instanz wird ein Heizer verwaltet. EU-Anmeldung, Erkennung, Statuslesen und grundlegende Ein/Aus-Steuerung sind am echten Gerät bestätigt. Nordamerika ist implementiert, aber noch nicht am Gerät geprüft.
+Eine Funktion erscheint nur, wenn das Profil sie kennt und das Gerät dafür einen gültigen Status liefert. Fehlende oder unbekannte optionale Werte werden ausgeblendet und sind nicht schaltbar. Ein gültiger Ein/Aus-Status ist erforderlich. Es werden keine Heizbefehle an Ventilatoren oder Luftbefeuchter gesendet. Spezialfunktionen wie RGB, Filterreset, vertikale Winkel, Timer, Klimageräte und Fan/Heater-Kombigeräte sind nicht enthalten.
 
 ## Installation und Einrichtung
 
-Der Eintrag im Symcon Module Store wird vorbereitet. Eine Verfügbarkeit im Store besteht erst nach Einreichung und Freigabe durch Symcon. Bis dahin kann das Modul über Module Control installiert werden.
+Der Eintrag im Symcon Module Store wird vorbereitet. Eine Store-Verfügbarkeit besteht erst nach Einreichung und Freigabe durch Symcon. Bis dahin über Module Control installieren.
 
-1. In **Module Control** das Repository `https://github.com/Powermaniaxx/Symcon-Dreo.git` mit Branch `main` hinzufügen.
-2. Über **Instanz hinzufügen → Dreo → Dreo 720S** eine Instanz erstellen.
-3. E-Mail, Passwort und Kontoregion des eigenen Dreo-Kontos eintragen. **App-API (720S, Standard)** beibehalten und Änderungen übernehmen.
-4. **Geräte suchen** anklicken. Den gefundenen Heizer auswählen, **Aktiv** einschalten und Änderungen übernehmen.
-5. Die erste erfolgreiche Statusabfrage abwarten. **Status gültig** muss wahr sein, bevor Werte für Automationen verwendet werden.
+1. Repository `https://github.com/Powermaniaxx/Symcon-Dreo.git`, Branch `main`, in **Module Control** hinzufügen beziehungsweise aktualisieren.
+2. Über **Instanz hinzufügen → Dreo → Dreo Gerät (Cloud)** eine Instanz erstellen. Pro Gerät wird eine eigene Instanz verwendet.
+3. E-Mail, Passwort und Kontoregion eintragen. **App-API (Standard)** beibehalten und Änderungen übernehmen.
+4. **Geräte suchen**, das gewünschte Gerät auswählen, **Aktiv** einschalten und Änderungen übernehmen.
+5. Die erste erfolgreiche Statusabfrage abwarten. Erst dann erscheinen die verfügbaren Funktionen und werden schaltbar.
 
-Bei einem Update von einer bisherigen GitHub-Version bleiben die vorhandene Instanz, ihre Einstellungen und die Variablen erhalten. Bibliotheks- und Modul-GUID werden nicht geändert. Für den Wechsel von Module Control zu einer späteren Store-Installation vorher eine Symcon-Sicherung erstellen; das konkrete Verfahren ist vor dem Entfernen einer Installation zu prüfen.
+Vorhandene 720S-Instanzen, Eigenschaften und Variablen bleiben erhalten; Bibliotheks- und Modul-GUID sowie interne Modulnamen werden nicht geändert. Für einen Wechsel von Module Control zu einer späteren Store-Installation das konkrete Verfahren vor dem Entfernen einer Installation prüfen und eine Symcon-Sicherung anlegen.
 
-Das [Modulhandbuch](DreoHeater/README.md) beschreibt alle Einstellungen, Variablen und Skriptfunktionen.
+Das [Modulhandbuch](DreoHeater/README.md) beschreibt Einstellungen, Variablen und Skriptfunktionen.
 
-## Bedienung
+## Schalten und Bestätigung
 
-Geschaltet wird über die Statusvariablen unterhalb der Instanz. Ein ausgeschalteter Heizer wird durch eine Änderung von Modus, Heizstufe oder Solltemperatur im Modul nicht zusätzlich eingeschaltet. Der eigene Ein/Aus-Schalter ist dafür zuständig. Beim Erstellen, Neustart oder Wiederverbinden werden keine automatischen Einschaltbefehle angelegt.
+Der erste freie Schaltauftrag wird direkt verarbeitet. Nach Cloud-Annahme wird die Statusbestätigung separat gelesen. Die angezeigten Werte ändern sich erst durch einen gemeldeten Gerätestatus. **Letzter Schaltauftrag** unterscheidet Versand, Cloud-Annahme und Gerätebestätigung.
 
-Der erste freie Schaltauftrag wird direkt verarbeitet. Nach Cloud-Annahme wird die Statusbestätigung separat gelesen, damit der Klick nicht noch auf eine zusätzliche HTTP-Abfrage warten muss. Ein Variablenwert wird erst aus einem gemeldeten Gerätestatus aktualisiert. **Letzter Schaltauftrag** zeigt den Fortschritt.
+Läuft bereits eine Übertragung, bleibt je Einstellung nur der letzte weitere Wunsch vorgemerkt. Aufträge verfallen nach 30 Sekunden. Konfigurationsänderungen, Sitzungs-Reset und Abfrage- oder Übertragungsfehler verwerfen wartende Aufträge. Modell und verfügbare Funktion werden vor dem Versand nochmals geprüft. Wechselt etwa der Luftbefeuchter von Auto zu Schlafen, wird ein vorgemerkter Auto-Feuchtigkeitswert nicht an die andere Funktion geschickt. Möglicherweise bereits ausgeführte Befehle werden nicht automatisch wiederholt.
 
-Wenn bereits eine Übertragung läuft, wird pro Einstellung nur der letzte weitere Wunsch vorgemerkt. Diese Aufträge gelten höchstens 30 Sekunden. Konfigurationsänderungen, Sitzungs-Reset und Abfrage- oder Übertragungsfehler verwerfen wartende Aufträge. Ein möglicherweise schon ausgeführter Befehl wird nicht automatisch wiederholt.
+Das Modul sendet bei Modus-, Heizstufen-, Feuchtigkeits- und Sollwertänderungen keinen zusätzlichen Einschaltbefehl. Erstellen, Neustarten und Wiederverbinden lösen ebenfalls keinen Einschaltbefehl aus. Das physische Verhalten eines Geräts nach einer einzelnen Einstellung hängt von dessen Firmware ab und ist für die neuen Profile noch nicht real geprüft.
 
-Ein interner DNS-Cache und die Hintergrundauflösung der Dreo-Server verkürzen wiederholte Namensauflösungen. Einträge gelten höchstens 120 Sekunden. TLS-Zertifikats- und Hostnamenprüfung bleiben aktiv. Bei kaltem Cache oder Problemen im Internet beziehungsweise in der Cloud sind weiterhin Wartezeiten möglich.
+Ein interner DNS-Cache und die Hintergrundauflösung der Server verkürzen wiederholte Namensauflösungen. Einträge gelten höchstens 120 Sekunden. TLS-Zertifikats- und Hostnamenprüfung bleiben aktiv. Ein kalter Cache und Cloud- oder Internetprobleme können weiterhin Wartezeiten verursachen.
 
-## Status und Temperatur
+## Status, Temperaturen und Grenzen
 
-**Status gültig** bedeutet, dass die letzte vollständige Cloud-Abfrage erfolgreich ausgewertet wurde. Bei Fehlern bleiben alte Messwerte sichtbar, sind jedoch nicht mehr als aktuell gültig gekennzeichnet. Für Automationen zusätzlich das Alter von **Letzte erfolgreiche Abfrage (Unixzeit)** prüfen; ein gestoppter Kernel kann gespeicherte Werte nicht selbständig ungültig machen.
+**Status gültig** bedeutet, dass die letzte Cloud-Abfrage anhand des ausgewählten Profils ausgewertet werden konnte. Bei Fehlern bleiben bisherige Messwerte gespeichert, sind aber nicht aktuell gültig. Für Automationen auch das Alter von **Letzte erfolgreiche Abfrage (Unixzeit)** prüfen. Ausgeblendete Variablen können alte Werte enthalten und dürfen nicht als unterstützte Funktion interpretiert werden.
 
-**Online ausdrücklich bestätigt** ist nur wahr, wenn die Cloud dies positiv meldet. Ein erfolgreicher HTTP-Abruf allein beweist nicht, dass der physische Heizer erreichbar ist. Bei fehlendem Online-Merkmal steht der Verbindungsstatus auf unbekannt. **Heizstatus geliefert** kennzeichnet, ob der Heizstatus tatsächlich in der Antwort vorhanden war.
+**Online ausdrücklich bestätigt** ist nur wahr, wenn die Cloud dies positiv meldet. Ein erfolgreicher HTTP-Abruf beweist nicht, dass das physische Gerät erreichbar ist. Fehlende optionale Werte sind kein Beleg für den ausgeschalteten Zustand der betreffenden Funktion.
 
-Beim App-API-Zugang des 720S werden Fahrenheit-Werte nach Celsius umgerechnet. Raumtemperatur 70 °F wird als 21,1 °C angezeigt. Ein eingestellter Sollwert von 21 °C wird entsprechend der App als 70 °F übertragen und wieder als 21 °C angezeigt. Der bereits in der Gerätemeldung berücksichtigte Temperatur-Offset wird nicht erneut angewendet.
+Bei den enthaltenen App-API-Heizerprofilen werden Fahrenheit-Werte in Celsius umgerechnet. 70 °F Raumtemperatur werden als 21,1 °C angezeigt. Ein Sollwert von 21 °C wird entsprechend der App als 70 °F übertragen und als 21 °C zurückgelesen. Beim 720S wird der bereits eingerechnete Temperatur-Offset nicht nochmals addiert. DR-HSH017BS ist auf ganze 5–29 °C beschränkt. Andere enthaltene Heizprofile erlauben 5–35 °C.
 
-## Fehlerdiagnose
+Beim Nomad One S / DR-HTF007S unterstützen ältere Hardwareversionen nur vier Stufen. Ohne eindeutige Gerätemetadaten bleiben vier Stufen verfügbar; acht werden nur mit passender gemeldeter Konfiguration und ohne bekannte alte MCU freigegeben. Bei DR-HAP010S wird die Lüfterstufe nur bei ausdrücklich aktiv gemeldeter Reinigung angeboten; das Modul aktiviert die Reinigung nicht automatisch. Bei Luftbefeuchtern werden Auto- und Schlaf-Feuchtigkeitsziele getrennt behandelt. Nebelstufe ist der unveränderte Gerätewert 0–6, keine Zusage von sieben physisch verschiedenen Stufen.
 
-**Diagnose anzeigen** liefert Version, verwendeten Cloud-Zugang, Fehlercodes, Abfragezeiten und anonymisierte Geräteanzahlen. Kontodaten, Passwort, Token und Geräte-Seriennummer werden nicht ausgegeben. Unter `commandTiming` stehen Verbindungszeit, Zeit bis zum Schreiben des letzten WebSocket-Befehls und Gesamtdauer in Millisekunden.
+## Diagnose und Zugangsdaten
 
-**Verbindung prüfen** vergleicht die automatische Verbindung mit IPv4, ohne Zugangsdaten zu senden. Dieser Test prüft keine Anmeldung. Auch eine HTTP-Antwort mit einem API-Fehler kann die Erreichbarkeit bestätigen. Für eine Gerätesuche müssen die Zugangsdaten vorher mit **Änderungen übernehmen** gespeichert sein.
+**Diagnose anzeigen** enthält Version, erkanntes Modell, Geräteart, verfügbare Funktionen, anonymisierte Geräteanzahlen und Abfragezeiten. Kontodaten, Passwort, Token und Seriennummer werden nicht ausgegeben. `commandTiming` zeigt Verbindungszeit, Zeitpunkt des geschriebenen Befehls und Gesamtdauer in Millisekunden.
 
-Bei Code **100022** hat Dreo die Anmeldung abgelehnt; gespeicherte E-Mail und Passwort lokal erneut prüfen. Automatische Anmeldeversuche werden bei diesem Code gestoppt. Andere Fehler führen zu einer längeren Pause zwischen automatischen Abfragen.
+**Verbindung prüfen** vergleicht automatische Verbindung und IPv4 ohne Zugangsdaten. Es ist kein Anmeldetest. Code **100022** bedeutet abgelehnte Anmeldung; gespeicherte E-Mail und Passwort lokal erneut prüfen. Automatische Anmeldeversuche stoppen bei diesem Code. Andere Fehler verlängern den Abfrageabstand.
 
-Die zusätzliche OpenAPI ist experimentell und für den 720S nicht als funktionierender Zugang bestätigt. Im bisherigen Nutzertest blieb sie bereits im Login bei HTTP 302 stehen. Für den normalen Betrieb **App-API** verwenden.
+Das Passwort ist eine normale Symcon-Eigenschaft mit maskiertem Eingabefeld. Administratoren und Sicherungen können diese Daten enthalten. Token und DNS-Cache liegen in Instanzpuffern. Kontodaten werden zur Anmeldung an Dreo übermittelt; es gibt keine Übertragung an den Modulherausgeber.
 
-## Zugangsdaten und Grenzen
-
-Das Passwortfeld ist maskiert, der gespeicherte Wert jedoch eine normale Symcon-Eigenschaft. Symcon-Administratoren und Sicherungen können diese Daten enthalten. Zugriffstoken und der interne Adresscache liegen in Instanzpuffern. Das Modul übermittelt Kontodaten an Dreo zur Anmeldung; es sendet keine Nutzerdaten an den Modulherausgeber.
-
-Die Cloud-API kann sich unabhängig vom Modul ändern. Firmware, geteilte Konten und mehrere gleichzeitige Instanzen sind noch nicht vollständig praktisch geprüft. Der Nutzer hat die grundlegende Steuerung und die Reaktion nach beta.9 bestätigt. Für Betriebsarten, Heizstufen und den Abgleich einzelner Solltemperaturen liegt bisher keine separate reale Bestätigung vor. Diese Grenzen stehen im [Prüfprotokoll](docs/TESTRESULTS.md).
+Die zusätzliche **OpenAPI ist experimentell und nur für den 720S implementiert**. Im bisherigen Nutzertest scheiterte bereits der Login mit HTTP 302. Für alle regulären Modellprofile **App-API** verwenden. Keine lokale LAN-Steuerung. Cloud, Firmware und Kontoberechtigungen können die Verwendbarkeit verändern. Nordamerika, geteilte Konten und der Parallelbetrieb vieler Instanzen sind noch nicht praktisch bestätigt.
 
 ## Entwicklung und Lizenz
 
-[GitHub Actions](https://github.com/Powermaniaxx/Symcon-Dreo/actions) prüft die eigenständigen Testsuiten unter PHP 8.2 bis 8.5 sowie die Bibliotheks- und Modulstruktur mit dem offiziellen Symcon-Validator. Die Tests verwenden synthetische API-Daten und lokale HTTP-, WebSocket- und TLS-Gegenstellen. Sie ersetzen keinen Hardwaretest.
+[GitHub Actions](https://github.com/Powermaniaxx/Symcon-Dreo/actions) prüft die Tests unter PHP 8.2 bis 8.5 sowie Bibliothek und Modul mit dem offiziellen Symcon-Validator. Die Tests verwenden synthetische API-Daten und lokale HTTP-, WebSocket- und TLS-Gegenstellen. Sie ersetzen keine Hardwaretests. Details stehen in [TESTRESULTS.md](docs/TESTRESULTS.md), Quellen in [PROVENANCE.md](docs/PROVENANCE.md).
 
-Änderungen: [CHANGELOG.md](CHANGELOG.md). Fehlerberichte: [CONTRIBUTING.md](CONTRIBUTING.md). Sicherheit: [SECURITY.md](SECURITY.md). Herkunft der Protokolle und Lizenzhinweise: [docs/PROVENANCE.md](docs/PROVENANCE.md).
-
-MIT-Lizenz. Bei Weitergabe auch die beiliegenden Lizenztexte von hass-dreo und pydreo-client beibehalten. Informationen zur vorbereiteten Store-Einreichung: [docs/STORE_SUBMISSION.md](docs/STORE_SUBMISSION.md).
+MIT-Lizenz, siehe [LICENSE](LICENSE). Die Referenzprojekte und ihre Lizenzhinweise sind im Verzeichnis `docs` dokumentiert.

@@ -4,8 +4,12 @@
     "type": 3,
     "vendor": "Dreo",
     "aliases": [
+        "Dreo Gerät (Cloud)",
         "Dreo 720S",
-        "Dreo Heizlüfter (Cloud)"
+        "Dreo Heizlüfter (Cloud)",
+        "Dreo Ventilator (Cloud)",
+        "Dreo Luftreiniger (Cloud)",
+        "Dreo Luftbefeuchter (Cloud)"
     ],
     "parentRequirements": [],
     "childRequirements": [],

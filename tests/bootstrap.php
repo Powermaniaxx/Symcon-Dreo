@@ -8,6 +8,7 @@ foreach (['IPS_KERNELMESSAGE' => 10001, 'KR_READY' => 10103,
     if (!defined($key)) { define($key, $value); }
 }
 function IPS_GetKernelRunlevel(): int { return KR_READY; }
+function IPS_SetHidden(int $id, bool $hidden): void { $GLOBALS['hidden'][$id] = $hidden; }
 function IPS_SemaphoreEnter(string $name, int $timeout): bool
 {
     if ((!str_starts_with($name, 'SymconDreo.Queue.') && ($GLOBALS['busy'] ?? false)) || isset($GLOBALS['heldLocks'][$name])) { return false; }
@@ -37,7 +38,13 @@ function DREO_GetDiagnostics(int $id): string
 class IPSModuleStrict
 {
     public int $InstanceID = 101;
-    public array $properties = [], $attributes = [], $buffers = [], $values = [], $actions = [], $timers = [], $debug = [];
+    public array $properties = [], $attributes = [], $buffers = [], $values = [], $actions = [], $timers = [], $debug = [], $presentations = [];
+    private array $variableIDs = [];
+    protected function GetIDForIdent(string $ident): int {
+        if (!array_key_exists($ident, $this->values)) { throw new RuntimeException('Variable not registered: ' . $ident); }
+        return $this->variableIDs[$ident] ??= count($this->variableIDs) + 1 + spl_object_id($this) * 1000;
+    }
+    public function isHidden(string $ident): bool { return $GLOBALS['hidden'][$this->GetIDForIdent($ident)] ?? false; }
     public int $status = 0;
     public function Create(): void {}
     public function ApplyChanges(): void {}
@@ -58,8 +65,8 @@ class IPSModuleStrict
     protected function RegisterTimer(string $name, int $interval, string $script): void { $this->timers[$name] = $interval; }
     protected function SetTimerInterval(string $name, int $interval): void { $this->timers[$name] = $interval; }
     protected function RegisterVariableBoolean(string $name, string $caption, array $presentation, int $position): bool { $new = !array_key_exists($name, $this->values); $this->values[$name] ??= false; return $new; }
-    protected function RegisterVariableInteger(string $name, string $caption, array $presentation, int $position): bool { $new = !array_key_exists($name, $this->values); $this->values[$name] ??= 0; return $new; }
-    protected function RegisterVariableFloat(string $name, string $caption, array $presentation, int $position): bool { $new = !array_key_exists($name, $this->values); $this->values[$name] ??= 0.0; return $new; }
+    protected function RegisterVariableInteger(string $name, string $caption, array $presentation, int $position): bool { $new = !array_key_exists($name, $this->values); $this->values[$name] ??= 0; $this->presentations[$name] = $presentation; return $new; }
+    protected function RegisterVariableFloat(string $name, string $caption, array $presentation, int $position): bool { $new = !array_key_exists($name, $this->values); $this->values[$name] ??= 0.0; $this->presentations[$name] = $presentation; return $new; }
     protected function RegisterVariableString(string $name, string $caption, array $presentation, int $position): bool { $new = !array_key_exists($name, $this->values); $this->values[$name] ??= ''; return $new; }
     protected function MaintainAction(string $name, bool $active): void { $this->actions[$name] = $active; }
     protected function SetValue(string $name, mixed $value): void { $this->values[$name] = $value; }
