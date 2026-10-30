@@ -7,14 +7,16 @@
 - 130 OpenAPI-Prüfungen einschließlich vollständigem Modulablauf und vier native cURL-Anfragen gegen die aufgezeichnete Hersteller-SDK-Referenz.
 - Sechs lokale WebSocket-Szenarien: Annahme, Fragmentierung plus Ping/Pong, Ablehnung, falsches Gerät, vorzeitiges Schließen, falscher Handshake.
 
-Die Entwicklungsumgebung verwendet keine echten Dreo-Zugangsdaten oder Geräte. Die Installation und das Formular sind inzwischen beim Nutzer in Symcon sichtbar; die Gerätesuche bleibt dort noch leer. Eine anonyme Cloud-Abfrage erreichte beim Nutzer mit beta.5 HTTP 200; erfolgreiche Anmeldung und die Steuerung am echten Gerät sind noch nicht bestätigt.
+Die Entwicklungsumgebung verwendet keine echten Dreo-Zugangsdaten oder Geräte. Beim Nutzer sind unter beta.6 am 30.10.2026 in Symcon mit einem EU-Konto und einem DR-HSH040S Anmeldung, Erkennung und Statuslesen über App-API bestätigt. Der letzte vorliegende Statusabruf ist 07:05:40 UTC mit StateValid=true. Die Geräte-Firmware wurde nicht mitgeteilt. Schaltbefehle und die Prüfung der Temperaturanzeige bleiben offen.
 
 ## Noch offen
 
 | Prüfung | Erwartetes Ergebnis | Ergebnis |
 | --- | --- | --- |
 | Bibliothek in Symcon 9 installieren | Keine PHP-, Bibliotheks-, Formular- oder API-Registrierungsfehler | Offen |
-| Echte EU-Anmeldung und 720S-Suche über OpenAPI | Eigenes Gerät in Auswahl, kein Gerät fremder Konten | Offen |
+| Echte EU-Anmeldung und 720S-Suche über App-API | Eigenes Gerät in Auswahl | Bestätigt mit beta.6 am 30.10.2026 |
+| Reales Statuslesen über App-API | StateValid=true, aktuelle erfolgreiche Abfrage | Bestätigt mit beta.6 am 30.10.2026 |
+| EU-Anmeldung und Suche über OpenAPI | Eigenes Gerät in Auswahl | Nicht bestanden: HTTP 302 im Login unter beta.6 |
 | Andere Geräte im selben Konto | Werden als nicht unterstützt nicht angeboten | Offen |
 | Nordamerika und Regionskorrektur aus OpenAPI-Token | Anmeldung und Gerätezugriff auf korrekter Region | Offen |
 | Kalter Start mit ausgeschaltetem Gerät | Gerät bleibt ausgeschaltet, keine Schaltbefehle | Offen |

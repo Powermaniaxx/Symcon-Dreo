@@ -2,7 +2,7 @@
     "elements": [
         {
             "type": "Label",
-            "caption": "Symcon Dreo 0.1.0-beta.6 – Vorabversion. Gerätesuche und Steuerung sind noch in Erprobung."
+            "caption": "Symcon Dreo 0.1.0-beta.7 – Vorabversion. Gerätesuche und Steuerung sind noch in Erprobung."
         },
         {
             "type": "Label",
@@ -29,18 +29,18 @@
             "caption": "Cloud-Zugang",
             "options": [
                 {
-                    "caption": "Dreo OpenAPI (Hersteller-Client)",
-                    "value": "openapi"
+                    "caption": "App-API (720S, Standard)",
+                    "value": "app"
                 },
                 {
-                    "caption": "App-API (bisheriger Zugang)",
-                    "value": "app"
+                    "caption": "Dreo OpenAPI (experimentell)",
+                    "value": "openapi"
                 }
             ]
         },
         {
             "type": "Label",
-            "caption": "OpenAPI meldet sich wie der Hersteller-Client zuerst am US-Server an und übernimmt die Kontoregion aus dem Token. Der bisherige App-Zugang bleibt auswählbar."
+            "caption": "Beim 720S sind Anmeldung, Gerätesuche und Statuslesen über die App-API am echten Gerät bestätigt. Schaltbefehle sind noch zu prüfen. OpenAPI blieb im bisherigen Nutzertest bei HTTP 302 im Login stehen."
         },
         {
             "type": "Select",
@@ -89,7 +89,7 @@
             "type": "Button",
             "caption": "Oberfläche testen",
             "link": false,
-            "onClick": "echo \"Oberfläche 0.1.0-beta.6: Klick empfangen. Instanz \" . $id; "
+            "onClick": "echo \"Oberfläche 0.1.0-beta.7: Klick empfangen. Instanz \" . $id; "
         },
         {
             "type": "Button",

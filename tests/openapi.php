@@ -98,14 +98,14 @@ reject(fn() => Protocol::openCommand(['mode' => 'hotair'], $unreviewed), 'unrevi
 $rejectControl = new Client('EU', 'fixture-token', static fn() => response(['accepted' => false]), 22, 'auto', 'openapi', config());
 reject(fn() => $rejectControl->send('fixture-sn', ['poweron' => true]), 'explicit command rejection stays a failure');
 verify((new Client('EU', 'fixture-token', static fn() => [200, '{"code":0}'], 22, 'auto', 'openapi', config()))->send('fixture-sn', ['poweron' => false]) === 'http-accepted', 'empty successful control response means cloud acceptance only');
-$instance = new DreoHeater(); $instance->Create(); verify($instance->properties['CloudAPI'] === 'openapi', 'module defaults to manufacturer API');
+$instance = new DreoHeater(); $instance->Create(); verify($instance->properties['CloudAPI'] === 'app', 'module defaults to app API confirmed on the real 720S');
 class OpenHeater extends DreoHeater
 {
     public array $requests = [], $liveState;
     public bool $unauthorizedOnce = false;
     public function __construct() {
         $this->liveState = rawState(); $this->Create();
-        $this->properties = array_merge($this->properties, ['Open' => true, 'Email' => 'fixture@example.invalid', 'Password' => 'fixture-password', 'Serial' => 'fixture-sn']);
+        $this->properties = array_merge($this->properties, ['Open' => true, 'CloudAPI' => 'openapi', 'Email' => 'fixture@example.invalid', 'Password' => 'fixture-password', 'Serial' => 'fixture-sn']);
         $this->ApplyChanges();
     }
     protected function httpTransport(): ?Closure {

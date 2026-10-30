@@ -17,7 +17,7 @@ class DreoHeater extends IPSModuleStrict
         $this->RegisterPropertyString('Email', '');
         $this->RegisterPropertyString('Password', '');
         $this->RegisterPropertyString('Region', 'EU');
-        $this->RegisterPropertyString('CloudAPI', 'openapi');
+        $this->RegisterPropertyString('CloudAPI', 'app');
         $this->RegisterPropertyString('Serial', '');
         $this->RegisterPropertyInteger('Interval', 30);
         $this->RegisterAttributeString('Devices', '[]');
@@ -201,7 +201,7 @@ class DreoHeater extends IPSModuleStrict
     public function GetDiagnostics(): string
     {
         // Deliberate allowlist: no account name, serial, password, bearer token or raw API data.
-        return json_encode(['module' => 'SymconDreo', 'version' => '0.1.0-beta.6', 'model' => Protocol::MODEL,
+        return json_encode(['module' => 'SymconDreo', 'version' => '0.1.0-beta.7', 'model' => Protocol::MODEL,
             'region' => $this->ReadPropertyString('Region'), 'active' => $this->ReadPropertyBoolean('Open'),
             'cloudAPI' => $this->ReadPropertyString('CloudAPI'),
             'stateValid' => $this->GetValue('StateValid'), 'lastUpdateUtc' => $this->GetValue('LastUpdate'),

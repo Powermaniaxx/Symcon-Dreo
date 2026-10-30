@@ -1,5 +1,12 @@
 # Änderungen
 
+## 0.1.0-beta.7 – 30.10.2026
+
+- Neue Instanzen verwenden standardmäßig App-API. Bestehende gespeicherte Einstellungen bleiben erhalten.
+- Am echten EU-Konto mit DR-HSH040S und beta.6 sind Anmeldung, Familien-Geräteliste und Statuslesen mit StateValid=true bestätigt. Schaltbefehle bleiben bis zum Gerätetest offen.
+- OpenAPI ist als experimentell gekennzeichnet: Der reale Login blieb bei HTTP 302 stehen. Die Übereinstimmung mit dem Hersteller-SDK wird nicht länger als Grund für dessen Voreinstellung verwendet.
+- Einrichtung, Formular und Abnahmeprotokoll nennen den tatsächlich geprüften Stand.
+
 ## 0.1.0-beta.6 – 30.10.2026
 
 - OpenAPI aus dem Herstellerprojekt pydreo-client ist der neue Standard: Login am US-Endpunkt, Regionswahl aus Token-Suffix, neue Clientkennung, grant_type openapi und dreover 1.0.0.

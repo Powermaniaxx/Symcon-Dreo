@@ -1,6 +1,6 @@
 # Protokollherkunft
 
-Seit 0.1.0-beta.6 ist standardmäßig der OpenAPI-Zugang aus dem Herstellerprojekt aktiv:
+In 0.1.0-beta.6 war der OpenAPI-Zugang aus dem Herstellerprojekt voreingestellt. Seit beta.7 ist App-API der Standard, nachdem Anmeldung, Gerätesuche und Statuslesen damit real bestätigt wurden; der OpenAPI-Login war beim Nutzer mit HTTP 302 gescheitert. Die experimentelle Implementierung orientiert sich an:
 https://github.com/dreo-team/pydreo-client/tree/5e4fa54abe795a557e95e2537b7573656a9e9ab7
 
 Gelesene und gegen den festen Commit geprüfte Dateien (lokale Kopien unterscheiden sich lediglich in abschließenden Leerzeilen):

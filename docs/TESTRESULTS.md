@@ -1,4 +1,4 @@
-# Testprotokoll 0.1.0-beta.6
+# Testprotokoll 0.1.0-beta.7
 
 Datum: 30.10.2026. Lokale Laufzeit: PHP CLI 8.3.6.
 
@@ -22,8 +22,11 @@ Datum: 30.10.2026. Lokale Laufzeit: PHP CLI 8.3.6.
 | Natives cURL: Timeout mit erhaltenen Fehler-/Laufzeitdaten | Bestanden |
 | Natives cURL: anonymer IPv4-Test mit HTTP 405 | Bestanden |
 | Anonyme Cloud-Abfrage beim Nutzer mit beta.5 | HTTP 200, API 100000, cURL 0; DNS etwa 5 s. Dies war kein Anmeldetest |
-| Echte Anmeldung und Dreo 720S | Erfolgreiche Anmeldung und Geräteabfrage noch nicht bestätigt |
-| Echter Symcon-9-Kernel und Visualisierung | beta.5: Diagnose und erster Testschritt ausgeführt; zusätzliche Symcon-Fehlermeldung. beta.6 noch nicht praktisch geprüft |
+| Reale App-API-Anmeldung und 720S-Geräteliste, EU, beta.6 | HTTP 200/API 0, genau ein unterstütztes Gerät mit Seriennummer |
+| Reales App-API-Statuslesen, beta.6 | HTTP 200/API 0, StateValid=true, letzter bestätigter Abruf 30.10.2026 07:05:40 UTC; Firmware nicht gemeldet |
+| Reale OpenAPI-Anmeldung, beta.6 | HTTP 302 beim Login; kein Gerätelistenaufruf |
+| Reale Schaltbefehle, Modi und Temperaturzuordnung | Noch offen |
+| Echter Symcon-9-Kernel und Visualisierung | beta.6: Installation, Auswahl und Statuslesen in Symcon beim Nutzer bestätigt; neue Voreinstellung in beta.7 noch nicht real geprüft |
 | GitHub-CI-Matrix PHP 8.2/8.3/8.4 | Status des jeweiligen Commits unter [GitHub Actions](https://github.com/Powermaniaxx/Symcon-Dreo/actions) |
 
 Die Antworten und Heizgerätekonfigurationen sind synthetisch und beruhen auf Community- und Herstellerquellen. Die OpenAPI-Anfragereferenz wurde aus dem originalen Hersteller-Client aufgezeichnet. Sie beweisen nicht, dass jedes reale Konto oder jede Firmware dieselben Werte liefert. Vor öffentlicher stabiler Freigabe die offenen Prüfungen aus TESTPLAN.md durchführen.
