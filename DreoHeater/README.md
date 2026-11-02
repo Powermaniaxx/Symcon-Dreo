@@ -1,6 +1,8 @@
 # Dreo Modul – Modulhandbuch
 
-Version 1.1.0 verbindet die Geräte aus der [Modellliste](../docs/SUPPORTED_MODELS.md) über das eigene Dreo-Konto mit Symcon ab Version 9.0. Standard ist **App-API**. Pro Gerät eine eigene Instanz anlegen. Keine lokale LAN-Steuerung. Reale Bestätigung liegt bisher nur für die grundlegende App-API-Anbindung des EU-720S vor; zusätzliche Profile sind implementiert und automatisch geprüft, aber noch nicht am echten Gerät bestätigt.
+Version 1.1.2 verbindet die Geräte aus der [Modellliste](../docs/SUPPORTED_MODELS.md) über das eigene Dreo-Konto mit Symcon ab Version 9.0. Standard ist **App-API**. Pro Gerät eine eigene Instanz anlegen. Keine lokale LAN-Steuerung. Reale Bestätigung liegt bisher nur für die grundlegende App-API-Anbindung des EU-720S vor; zusätzliche Profile sind implementiert und automatisch geprüft, aber noch nicht am echten Gerät bestätigt.
+
+Das Turmventilator-Profil **DR-HTF004S (Pilot Max S)** bietet bei gültiger Cloud-Rückmeldung Ein/Aus, 12 Stufen, vier Betriebsarten und horizontales Schwenken. Die praktische Bestätigung an einem echten DR-HTF004S mit diesem Symcon-Modul steht aus.
 
 ## Einrichtung
 
