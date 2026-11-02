@@ -307,7 +307,7 @@ class DreoHeater extends IPSModuleStrict
     {
         // Deliberate allowlist: no account name, serial, password, bearer token or raw API data.
         $device = json_decode($this->GetBuffer('SelectedDevice'), true) ?? [];
-        return json_encode(['module' => 'SymconDreo', 'version' => '1.1.1', 'model' => $device['model'] ?? null,
+        return json_encode(['module' => 'SymconDreo', 'version' => json_decode(file_get_contents(__DIR__ . '/../library.json'), true, 16, JSON_THROW_ON_ERROR)['version'], 'model' => $device['model'] ?? null,
             'deviceType' => ModelCatalog::profile($device['model'] ?? '')['type'] ?? null,
             'supportedModelCount' => count(ModelCatalog::all()),
             'availableControls' => json_decode($this->GetBuffer('AvailableControls'), true) ?? [],
