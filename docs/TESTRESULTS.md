@@ -8,7 +8,7 @@ Automatisierte Nachprüfung: 02.11.2026. Lokale Laufzeit: PHP CLI 8.3.6. Die unt
 | JSON-Parsing aller Konfigurationsdateien | Bestanden |
 | Protokoll-/Modultests mit synthetischen Antworten und SDK-Ersatz | 203 Prüfungen bestanden |
 | Stand 1.1.1: 39 Modellprofile, gemischtes Konto und beide Geräteabfrage-Routen | 241 Prüfungen in tests/models.php bestanden; synthetische Daten |
-| Neu in 1.1.2: DR-HTF004S (Pilot Max S), insgesamt 40 Profile | Gezielte Tests für Erkennung, 12-Stufen-Grenze, Modi, Schwenken und Instanzablauf ergänzt; CI für 1.1.2 noch zu prüfen |
+| Neu in 1.1.2: DR-HTF004S (Pilot Max S), insgesamt 40 Profile | 259 Modellprüfungen unter PHP 8.4 erfolgreich (GitHub Actions Lauf 41426051031); synthetische Daten, kein Hardwaretest |
 | Geräteartabhängige Aktionen, Grenzen, unbekannte Werte und getrennte Feuchtigkeitsziele | Bestanden mit synthetischen Daten und SDK-Ersatz |
 | Alte 720S-Variablen, neue Variablen bei ApplyChanges, Typwechsel und Folgeklicks für Lüfter | Bestanden mit SDK-Ersatz |
 | Zusätzliche Modelle am physischen Gerät | Noch offen; keine reale Bestätigung aus den automatischen Tests abgeleitet |
@@ -39,7 +39,7 @@ Automatisierte Nachprüfung: 02.11.2026. Lokale Laufzeit: PHP CLI 8.3.6. Die unt
 | Warteschlange: gleiche/gegenläufige Klicks, letzter Wunsch, Ablauf, Reset und Fehler | Bestanden mit SDK-Ersatz und simuliertem Wiedereintritt; reale Prüfung von beta.8 offen |
 | Reale Modi, Heizstufen und Temperaturzuordnung | Noch offen |
 | Echter Symcon-9-Kernel und Visualisierung | beta.6: Installation, Auswahl und Statuslesen in Symcon beim Nutzer bestätigt; neue Voreinstellung in beta.7 noch nicht real geprüft |
-| GitHub-CI-Matrix PHP 8.2/8.3/8.4/8.5 und offizieller Symcon-Validator | Status des jeweiligen Commits unter [GitHub Actions](https://github.com/Powermaniaxx/Symcon-Dreo/actions) |
+| GitHub-CI-Matrix PHP 8.2/8.3/8.4/8.5 und offizieller Symcon-Validator | 1.1.2: alle fünf Jobs erfolgreich am 02.11.2026, [Prüflauf 41426051031](https://github.com/Powermaniaxx/Symcon-Dreo/actions/runs/41426051031); kein Hardwaretest |
 
 Die Antworten und Heizgerätekonfigurationen sind synthetisch und beruhen auf Community- und Herstellerquellen. Die OpenAPI-Anfragereferenz wurde aus dem originalen Hersteller-Client aufgezeichnet. Sie beweisen nicht, dass jedes reale Konto oder jede Firmware dieselben Werte liefert. Die offene Hardwareprüfung in TESTPLAN.md bleibt von der Projektfreigabe 1.1.0 und einer späteren Store-Prüfung getrennt.
 
