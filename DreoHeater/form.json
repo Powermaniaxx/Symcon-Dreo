@@ -2,7 +2,7 @@
     "elements": [
         {
             "type": "Label",
-            "caption": "Dreo Modul · Version 1.1.0"
+            "caption": "Dreo Modul · Version 1.1.1"
         },
         {
             "type": "Label",
@@ -89,7 +89,7 @@
             "type": "Button",
             "caption": "Oberfläche testen",
             "link": false,
-            "onClick": "echo \"Oberfläche 1.1.0: Klick empfangen. Instanz \" . $id; "
+            "onClick": "echo \"Oberfläche 1.1.1: Klick empfangen. Instanz \" . $id; "
         },
         {
             "type": "Button",
