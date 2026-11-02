@@ -89,7 +89,7 @@
             "type": "Button",
             "caption": "Oberfläche testen",
             "link": false,
-            "onClick": "echo \"Oberfläche \" . (json_decode(DREO_GetDiagnostics($id), true)[\"version\"] ?? \"unbekannt\") . \": Klick empfangen. Instanz \" . $id;"
+            "onClick": "echo \"Oberfläche 1.1.2: Klick empfangen. Instanz \" . $id;"
         },
         {
             "type": "Button",
