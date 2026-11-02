@@ -124,11 +124,6 @@
     ],
     "status": [
         {
-            "code": 101,
-            "icon": "inactive",
-            "caption": "Warte auf erste Abfrage"
-        },
-        {
             "code": 102,
             "icon": "active",
             "caption": "Dreo-Cloud erreichbar"
@@ -154,9 +149,9 @@
             "caption": "Dreo-Gerät meldet offline"
         },
         {
-            "code": 201,
-            "icon": "inactive",
-            "caption": "Gerät noch nicht ausgewählt – bitte Geräte suchen"
+            "code": 106,
+            "icon": "standby",
+            "caption": "Warte auf Geräteauswahl oder erste Abfrage"
         }
     ]
 }

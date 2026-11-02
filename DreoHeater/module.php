@@ -85,12 +85,12 @@ class DreoHeater extends IPSModuleStrict
         $this->SetValue('LastError', '');
         if ($this->ReadPropertyString('Serial') === '') {
             $this->feedback('Zugangsdaten gespeichert. Jetzt Geräte suchen und danach ein Gerät auswählen.');
-            $this->SetStatus(201);
+            $this->SetStatus(106);
             return;
         }
         $this->SetSummary('Dreo · ' . $this->ReadPropertyString('Region'));
         if (IPS_GetKernelRunlevel() === KR_READY) { $this->SetTimerInterval('Refresh', 1000); $this->SetTimerInterval('EndpointWarmup', 1000); }
-        $this->SetStatus(101);
+        $this->SetStatus(106);
     }
 
     public function MessageSink(int $TimeStamp, int $SenderID, int $Message, array $Data): void
@@ -126,7 +126,7 @@ class DreoHeater extends IPSModuleStrict
                 : count($devices) . ' Gerät(e) gefunden. Gerät auswählen und Änderungen übernehmen.'
                     . ((json_decode($this->GetBuffer('DiscoveryDiagnostics'), true) ?? [])['incompleteDiscovery'] ?? false
                         ? ' Eine Geräteliste konnte nicht vollständig gelesen werden; Diagnose prüfen.' : ''));
-            if ($this->ReadPropertyBoolean('Open') && $this->ReadPropertyString('Serial') === '') { $this->SetStatus(201); }
+            if ($this->ReadPropertyBoolean('Open') && $this->ReadPropertyString('Serial') === '') { $this->SetStatus(106); }
             return true;
         });
     }
@@ -136,7 +136,7 @@ class DreoHeater extends IPSModuleStrict
         if (!$this->ReadPropertyBoolean('Open')) { return false; }
         if ($this->ReadPropertyString('Serial') === '') {
             $this->SetTimerInterval('Refresh', 0);
-            $this->SetStatus(201);
+            $this->SetStatus(106);
             return false;
         }
         return $this->guard(function (): bool {
