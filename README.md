@@ -1,8 +1,12 @@
 # Dreo Modul für Symcon
 
-Version **1.1.1** verbindet unterstützte Dreo-Geräte direkt über die Dreo-Cloud mit **Symcon ab Version 9.0**. Enthalten sind **39 konkrete Modellprofile** für Heizgeräte, Ventilatoren, Luftreiniger und Luftbefeuchter. Benötigt werden ein eigenes Dreo-Konto, ein bereits in der Dreo-App eingerichtetes Gerät und Internetzugang. Home Assistant, MQTT und weitere Dienste sind nicht erforderlich.
+Version **1.1.2** verbindet unterstützte Dreo-Geräte direkt über die Dreo-Cloud mit **Symcon ab Version 9.0**. Enthalten sind **40 konkrete Modellprofile** für Heizgeräte, Ventilatoren, Luftreiniger und Luftbefeuchter. Benötigt werden ein eigenes Dreo-Konto, ein bereits in der Dreo-App eingerichtetes Gerät und Internetzugang. Home Assistant, MQTT und weitere Dienste sind nicht erforderlich.
 
 **Die Nutzung in der Dreo-App allein garantiert keine Unterstützung.** Maßgeblich ist die [Modellliste](docs/SUPPORTED_MODELS.md). Bisher sind EU-Anmeldung, Erkennung, Statuslesen und grundlegendes Ein/Aus am echten **720S / DR-HSH040S** bestätigt. Die zusätzlichen Profile sind anhand der Protokollreferenz implementiert und mit synthetischen Daten geprüft; reale Tests dieser Modelle stehen aus. Dies ist ein unabhängiges Community-Modul und kein offizielles Dreo-Produkt.
+
+## Änderungen in Version 1.1.2
+
+Der Dreo Pilot Max S **DR-HTF004S** wurde als eigenes Turmventilator-Profil ergänzt (12 Stufen, Normal/Natur/Schlafen/Auto, horizontales Schwenken). Die Funktionen erscheinen ausschließlich bei passendem gemeldetem Gerätestatus. Der Eintrag wird über die App-API erkannt; reale Funktionstests mit diesem Symcon-Modul stehen aus. Versionsnummer und Build: 1.1.2 / 13.
 
 ## Änderungen in Version 1.1.1
 

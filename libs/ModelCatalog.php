@@ -17,7 +17,7 @@ final class ModelCatalog
             'DR-HSH010S', 'DR-HSH011', 'DR-HSH011S', 'DR-HSH017S', 'DR-HSH017BS', 'DR-HSH034S', 'DR-HSH040S', 'DR-HSH041S'] as $model) {
             $models[$model] = ['type' => 'heater', 'maxTemperature' => $model === 'DR-HSH017BS' ? 29 : 35];
         }
-        foreach (['DR-HTF007S' => 4, 'DR-HTF011S' => 9, 'DR-HTF018S' => 9, 'DR-HTF017S' => 4,
+        foreach (['DR-HTF004S' => 12, 'DR-HTF007S' => 4, 'DR-HTF011S' => 9, 'DR-HTF018S' => 9, 'DR-HTF017S' => 4,
             'DR-HTF024S' => 9, 'DR-HTF021S' => 12, 'DR-HTF021AS' => 12, 'DR-HTF518S' => 9,
             'DR-HAF001S' => 4, 'DR-HAF008S' => 9, 'DR-HPF004S' => 9, 'DR-HPF005S' => 10,
             'DR-HPF007S' => 10, 'DR-HPF008S' => 9, 'DR-HPF020S' => 9, 'DR-HPF022S' => 9] as $model => $max) {

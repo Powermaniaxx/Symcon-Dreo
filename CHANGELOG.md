@@ -1,5 +1,12 @@
 # Änderungen
 
+## 1.1.2 – 02.11.2026
+
+- Dreo Pilot Max S / DR-HTF004S als explizites Turmventilator-Profil ergänzt. Gerätesuche bietet dieses Modell nun bei gültiger Seriennummer an.
+- 12 Lüfterstufen, Normal/Natur/Schlafen/Auto und horizontales Schwenken nach gemeldetem Status; keine zusätzlichen Spezialfunktionen oder automatische Einschaltung.
+- Automatisierte Modell-/Befehls- und Instanztests erweitert. Reale Prüfung mit diesem Symcon-Modul steht noch aus; Quellen sind Herstellerhandbuch und Community-Integration.
+- Versionsnummer 1.1.2, Build 13.
+
 ## 1.1.1 – 02.11.2026
 
 - Wartestatus 106 (Standby) statt Erstellungsstatus 101 beziehungsweise Fehlerstatus 201 bei noch fehlender Geräteauswahl oder erster Abfrage. Bestehende Gerätesteuerung bleibt unverändert.

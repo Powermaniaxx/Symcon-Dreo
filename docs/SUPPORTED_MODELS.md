@@ -1,6 +1,6 @@
-# Unterstützte Modellprofile – 1.1.0
+# Unterstützte Modellprofile – 1.1.2
 
-39 explizite App-API-Profile. Die bloße Verfügbarkeit in der Dreo-App reicht nicht aus. Zusätzliche Modelle werden erst nach Prüfung ihrer Protokollzuordnung ergänzt; es gibt keine Freigabe nach bloßem Modellpräfix.
+40 explizite App-API-Profile. Die bloße Verfügbarkeit in der Dreo-App reicht nicht aus. Zusätzliche Modelle werden erst nach Prüfung ihrer Protokollzuordnung ergänzt; es gibt keine Freigabe nach bloßem Modellpräfix.
 
 **Reale Bestätigung:** Bisher nur grundlegende EU-Anmeldung, Gerätesuche, Statuslesen und Ein/Aus des DR-HSH040S. Alle anderen Zeilen bedeuten „implementiert und mit synthetischen Daten geprüft“, nicht „am echten Gerät bestätigt“. Die verfügbaren Funktionen hängen zusätzlich von den gültigen Statusfeldern ab.
 
@@ -19,6 +19,7 @@
 | DR-HSH034S | Heizgerät | H1–H3, 5–35 °C |
 | DR-HSH040S | Heizgerät | H1–H3, 5–35 °C; grundlegende Anbindung real bestätigt |
 | DR-HSH041S | Heizgerät | H1–H3, 5–35 °C |
+| DR-HTF004S | Ventilator (Pilot Max S) | 12 Stufen, Normal/Natur/Schlafen/Auto, horizontales Schwenken; reale Prüfung im Symcon-Modul offen |
 | DR-HTF007S | Ventilator | Lüfterstufen 1–4; 8 nur bei eindeutiger Gerätekonfiguration, bekannte alte MCU bleibt bei 4 |
 | DR-HTF011S | Ventilator | Lüfterstufen 1–9 |
 | DR-HTF018S | Ventilator | Lüfterstufen 1–9 |

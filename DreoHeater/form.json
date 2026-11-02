@@ -2,11 +2,11 @@
     "elements": [
         {
             "type": "Label",
-            "caption": "Dreo Modul · Version 1.1.1"
+            "caption": "Dreo Modul · Version 1.1.2"
         },
         {
             "type": "Label",
-            "caption": "39 Modellprofile für Heizgeräte, Ventilatoren, Luftreiniger und Luftbefeuchter. Funktionen hängen von Modell und Gerätestatus ab. Keine lokale LAN-Steuerung."
+            "caption": "40 Modellprofile für Heizgeräte, Ventilatoren, Luftreiniger und Luftbefeuchter. Funktionen hängen von Modell und Gerätestatus ab. Keine lokale LAN-Steuerung."
         },
         {
             "type": "CheckBox",
@@ -89,7 +89,7 @@
             "type": "Button",
             "caption": "Oberfläche testen",
             "link": false,
-            "onClick": "echo \"Oberfläche 1.1.1: Klick empfangen. Instanz \" . $id; "
+            "onClick": "echo \"Oberfläche 1.1.2: Klick empfangen. Instanz \" . $id;"
         },
         {
             "type": "Button",
