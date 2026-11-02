@@ -1,12 +1,12 @@
-# Testprotokoll 1.1.0
+# Testprotokoll 1.1.1
 
-Datum: 30.10.2026. Lokale Laufzeit: PHP CLI 8.3.6.
+Automatisierte Nachprüfung: 02.11.2026. Lokale Laufzeit: PHP CLI 8.3.6. Die unten genannten realen Gerätebelege stammen weiterhin aus den ausdrücklich datierten früheren Tests.
 
 | Prüfung | Ergebnis |
 | --- | --- |
 | PHP-Syntax sämtlicher PHP-Dateien | Bestanden |
 | JSON-Parsing aller Konfigurationsdateien | Bestanden |
-| Protokoll-/Modultests mit synthetischen Antworten und SDK-Ersatz | 194 Prüfungen bestanden |
+| Protokoll-/Modultests mit synthetischen Antworten und SDK-Ersatz | 203 Prüfungen bestanden |
 | 39 Modellprofile, gemischtes Konto und beide Geräteabfrage-Routen | 241 Prüfungen in tests/models.php bestanden; synthetische Daten |
 | Geräteartabhängige Aktionen, Grenzen, unbekannte Werte und getrennte Feuchtigkeitsziele | Bestanden mit synthetischen Daten und SDK-Ersatz |
 | Alte 720S-Variablen, neue Variablen bei ApplyChanges, Typwechsel und Folgeklicks für Lüfter | Bestanden mit SDK-Ersatz |
@@ -43,3 +43,9 @@ Datum: 30.10.2026. Lokale Laufzeit: PHP CLI 8.3.6.
 Die Antworten und Heizgerätekonfigurationen sind synthetisch und beruhen auf Community- und Herstellerquellen. Die OpenAPI-Anfragereferenz wurde aus dem originalen Hersteller-Client aufgezeichnet. Sie beweisen nicht, dass jedes reale Konto oder jede Firmware dieselben Werte liefert. Die offene Hardwareprüfung in TESTPLAN.md bleibt von der Projektfreigabe 1.1.0 und einer späteren Store-Prüfung getrennt.
 
 Ab 1.1.0 steht ein erfolgreicher Status für die Auswertung des jeweiligen Profils, nicht für die Vollständigkeit aller denkbaren Gerätefunktionen. Ein gültiger Power-Wert ist Pflicht. Unbekannte oder fehlende optionale Werte werden ausgeblendet und sind nicht schaltbar; die alte 720S-Pflichtprüfung bleibt erhalten. Tests von tatsächlicher Haptik, Beschriftungen auf Geräten, Firmwarevarianten und physischer Wirkung der neuen Modelle stehen aus.
+
+## Nachprüfung des Wartestatus in 1.1.1
+
+Die lokale Prüfung bestätigt Standby 106 ohne gewähltes Gerät, nach einer Suche ohne Auswahl und vor der ersten Abfrage mit ausgewähltem Gerät. Eine korrigierte Konfiguration kann von Fehler 200 über Standby 106 nach einer gültigen Antwort aktiv 102 werden. Beim Kernel-Neustart werden die Aktionen bis zum frischen Status gesperrt. Die Versionsausgaben von Formular und Diagnose werden gegen library.json geprüft.
+
+Drei absichtlich fehlerhafte temporäre Kopien wurden von der Testsuite abgelehnt: Fehlerstatus 201 beim Warten, Erstellungsstatus 101 nach Auswahl sowie eine von library.json abweichende Diagnoseversion. Die Produktionsdateien wurden dafür nicht verändert. Dies sind Tests mit SDK-Ersatz, kein neuer Beleg aus einem echten Symcon-Kernel.

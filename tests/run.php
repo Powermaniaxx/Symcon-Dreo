@@ -8,6 +8,7 @@ use SymconDreo\Protocol;
 use SymconDreo\WebSocket;
 use SymconDreo\ApiException;
 
+$releaseVersion = json_decode(file_get_contents(__DIR__ . '/../library.json'), true, 64, JSON_THROW_ON_ERROR)['version'];
 $passed = 0;
 function check(bool $condition, string $name): void
 {
@@ -181,15 +182,20 @@ function heater(): TestHeater {
 $h = new TestHeater(); $h->ApplyChanges();
 check($h->status === 104 && $h->timers['Refresh'] === 0, 'disabled instance does not poll');
 $setup = heater(); $setup->properties['Serial'] = ''; $setup->ApplyChanges();
-check($setup->status === 201 && $setup->values['LastError'] === '', 'first setup does not report missing device as invalid credentials/configuration');
+check($setup->status === 106 && $setup->values['LastError'] === '', 'first setup waits in standby instead of reporting a configuration error');
 check($setup->timers['Refresh'] === 0 && !$setup->actions['Power'], 'first setup has no background error loop or active controls');
 check($setup->DiscoverDevices(), 'search works with no selected device');
+check($setup->status === 106 && $setup->values['LastError'] === '', 'successful discovery without selection retains standby');
 $setupForm = json_decode($setup->GetConfigurationForm(), true);
+$statusEntries = array_column($setupForm['status'], null, 'code');
+check(isset($statusEntries[106]) && $statusEntries[106]['caption'] !== '', 'standby has an explicit form caption');
+check(!isset($statusEntries[101]), 'form does not repurpose the reserved creating lifecycle status');
 $select = array_values(array_filter($setupForm['elements'], fn($x) => ($x['name'] ?? '') === 'Serial'))[0];
 $feedback = array_values(array_filter($setupForm['elements'], fn($x) => ($x['name'] ?? '') === 'Feedback'))[0];
 check(count($select['options']) === 2, 'found device options survive form reopen');
 check(str_contains($feedback['caption'], '1 Gerät(e) gefunden'), 'search result is visible near device selection after reopen');
 check(!$setup->Refresh() && $setup->fake->reads === 0 && $setup->values['LastError'] === '', 'refresh before selection is harmless and does not query state');
+check($setup->status === 106, 'refresh without selection remains in standby');
 $setup->fake->devices = []; $setup->DiscoverDevices();
 check(str_contains($setup->buffers['SearchFeedback'], 'Anmeldung erfolgreich'), 'empty device list is distinguished from failed authentication');
 $setup->fake->discoverFailure = new ApiException('Dreo antwortet mit HTTP 403.', 403); $setup->DiscoverDevices();
@@ -200,9 +206,17 @@ $feedback = array_values(array_filter($setupForm['elements'], fn($x) => ($x['nam
 check(str_contains($feedback['caption'], 'HTTP 403'), 'discovery error survives form reopen');
 $h = heater();
 check(!$h->values['StateValid'] && !$h->actions['Power'], 'controls disabled before first valid state');
+check($h->status === 106 && $h->timers['Refresh'] === 1000 && $h->values['LastError'] === '', 'selected device waits in standby with first refresh scheduled');
 check($h->Refresh() && $h->values['CurrentTemperature'] === 21.1, 'module displays Celsius from real protocol values');
 check($h->values['TargetTemperature'] === 21.0, 'module setpoint matches app whole Celsius');
 check($h->timers['Refresh'] === 30000 && $h->status === 102, 'poll interval/status after successful refresh');
+$recovery = heater(); $recovery->properties['Email'] = ''; $recovery->ApplyChanges();
+check($recovery->status === 200, 'invalid credentials still report an actual configuration error');
+$recovery->properties['Email'] = 'fixture@example.invalid'; $recovery->ApplyChanges();
+check($recovery->status === 106 && $recovery->values['LastError'] === '', 'saving corrected configuration leaves the error state');
+check($recovery->Refresh() && $recovery->status === 102, 'corrected configuration can become active after a valid read');
+$recovery->MessageSink(0, 0, IPS_KERNELMESSAGE, [KR_READY]);
+check($recovery->status === 106 && !$recovery->actions['Power'] && $recovery->timers['Refresh'] === 1000, 'kernel-ready restart waits for a fresh state without a creating status');
 $readsBeforeSend = $h->fake->reads;
 $h->SetPower(true);
 check($h->fake->reads === $readsBeforeSend && $h->timers['Refresh'] === 1000, 'click sends without waiting for an HTTP confirmation poll');
@@ -340,7 +354,7 @@ function clickButton(TestHeater $instance, string $caption): string {
     finally { ob_end_clean(); }
 }
 $ui = heater();
-check(str_contains(clickButton($ui, 'Oberfläche testen'), '1.1.0: Klick empfangen. Instanz 101'), 'pure console callback immediately prints version and instance');
+check(str_contains(clickButton($ui, 'Oberfläche testen'), $releaseVersion . ': Klick empfangen. Instanz 101'), 'pure console callback immediately prints library version and instance');
 check(str_contains(clickButton($ui, 'Geräte suchen'), 'Klick empfangen'), 'actual search callback acknowledges before network work');
 check($ui->timers['FormAction'] === 1000 && $ui->attributes['Devices'] === '[]', 'search waits for background timer');
 check(str_contains(clickButton($ui, 'Status aktualisieren'), 'wartet bereits'), 'second form job does not replace queued search');
@@ -362,7 +376,7 @@ $rejectedUi = heater();
 check(str_contains(clickButton($rejectedUi, 'Geräte suchen'), 'Symcon meldet einen Aufruffehler')
     && $rejectedUi->timers['FormAction'] === 0, 'rejected kernel call reports failure without claiming a queued search');
 $GLOBALS['callbackReject'] = false;
-check(json_decode(clickButton($rejectedUi, 'Diagnose anzeigen'), true)['version'] === '1.1.0', 'diagnostics returns JSON directly without action output');
+check(json_decode(clickButton($rejectedUi, 'Diagnose anzeigen'), true)['version'] === $releaseVersion, 'diagnostics returns the declared library version directly without action output');
 $ui = heater(); clickButton($ui, 'Geräte suchen'); $ui->ApplyChanges(); $ui->RequestAction('RunFormAction', true);
 check($ui->attributes['Devices'] === '[]' && $ui->timers['FormAction'] === 0, 'apply cancels waiting form work');
 $ui = new TestHeater(); clickButton($ui, 'Status aktualisieren'); $ui->RequestAction('RunFormAction', true);

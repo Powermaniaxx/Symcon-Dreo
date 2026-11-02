@@ -1,5 +1,12 @@
 # Änderungen
 
+## 1.1.1 – 02.11.2026
+
+- Wartestatus 106 (Standby) statt Erstellungsstatus 101 beziehungsweise Fehlerstatus 201 bei noch fehlender Geräteauswahl oder erster Abfrage. Bestehende Gerätesteuerung bleibt unverändert.
+- Testvorgaben an den Wartestatus angepasst und um Ablaufprüfungen für Geräteauswahl, korrigierte Konfiguration und Kernel-Neustart ergänzt. Formular und Diagnose müssen dieselbe Versionsnummer wie library.json ausgeben.
+- Alle PHP-Versionen der CI-Matrix laufen unabhängig bis zum Ergebnis; ein fehlgeschlagener Test bricht die anderen Versionen nicht mehr vorzeitig ab.
+- SHA256SUMS auf den tatsächlichen Repository-Stand aktualisiert.
+
 ## 1.1.0 – 30.10.2026
 
 - Allgemeiner Name „Dreo Modul“ und 39 explizite Modellprofile für Heizgeräte, Ventilatoren, Luftreiniger und Luftbefeuchter. Geräte außerhalb dieser Liste werden nicht freigeschaltet.
