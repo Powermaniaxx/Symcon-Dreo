@@ -32,10 +32,10 @@ $records = [];
 foreach (ModelCatalog::all() as $model => $profile) { $records[] = ['model' => $model, 'sn' => 'fixture-' . $model]; }
 $found = Protocol::devices(['list' => $records, 'familyRooms' => [['devices' => $records]],
     'unsupported' => [['model' => 'DR-HSH016S', 'sn' => 'combo'], ['model' => 'DR-HAC006S', 'sn' => 'ac'], ['model' => 'DR-NEW999S', 'sn' => 'future']]]);
-test(count($found) === count($records) && count($found) === 39, 'mixed account discovers each allowlisted model exactly once');
+test(count($found) === count($records) && count($found) === 40, 'mixed account discovers each allowlisted model exactly once');
 test(count(Protocol::devices(['list' => [['model' => 'DR-HSH040S']]])) === 0, 'missing serial never yields a usable device');
 rejects(fn() => Protocol::devices(['list' => [['model' => 'DR-HSH040S', 'sn' => 'same'], ['model' => 'DR-HHM005S', 'sn' => 'same']]]), 'conflicting model for a serial fails closed');
-test(Protocol::discoveryStats(['list' => $records])['supportedUsable'] === 39, 'discovery statistics cover the whole catalog');
+test(Protocol::discoveryStats(['list' => $records])['supportedUsable'] === 40, 'discovery statistics cover the whole catalog');
 $split = new Client('EU', 'fixture', static function ($url): array {
     $family = str_contains($url, '/family/');
     $record = ['model' => $family ? 'DR-HSH040S' : 'DR-HTF011S', 'sn' => $family ? 'heater' : 'fan'];
@@ -64,6 +64,13 @@ foreach (ModelCatalog::all() as $model => $profile) {
 rejects(fn() => ModelCatalog::fields('DR-UNKNOWN', ['poweron' => true]), 'unknown model never inherits a profile');
 rejects(fn() => ModelCatalog::fields('DR-HTF011S', ['desired' => ['poweron' => true]]), 'desired-only power never enables controls');
 rejects(fn() => ModelCatalog::fields('DR-HTF011S', ['poweron' => 'false']), 'ambiguous boolean rejected');
+$pilot = sample('DR-HTF004S');
+test(ModelCatalog::profile('DR-HTF004S')['maxSpeed'] === 12, 'Pilot Max S has twelve speed levels');
+test(ModelCatalog::command('DR-HTF004S', $pilot, [], 'FanSpeed', 12) === ['windlevel' => 12], 'Pilot Max S allows speed 12');
+rejects(fn() => ModelCatalog::command('DR-HTF004S', $pilot, [], 'FanSpeed', 13), 'Pilot Max S rejects speed above 12');
+test(ModelCatalog::command('DR-HTF004S', $pilot, [], 'Mode', 3) === ['windtype' => 4], 'Pilot Max S uses Auto mode 4');
+test(ModelCatalog::command('DR-HTF004S', $pilot, [], 'Oscillation', true) === ['shakehorizon' => true], 'Pilot Max S uses reported oscillation control');
+test(count(Protocol::devices(['list' => [['model' => 'DR-HTF004S', 'sn' => 'pilot-fixture']]])) === 1, 'Pilot Max S appears in device search');
 $state = sample('DR-HTF011S');
 test(ModelCatalog::command('DR-HTF011S', $state, [], 'FanSpeed', 9) === ['windlevel' => 9], 'fan speed uses native steps');
 rejects(fn() => ModelCatalog::command('DR-HTF011S', $state, [], 'FanSpeed', 10), 'fan speed model limit');
@@ -134,7 +141,7 @@ class ModelFixtureModule extends DreoHeater {
     }
     protected function newClient(string $region, string $token): Client { return $this->fixture; }
 }
-foreach (['DR-HSH040S', 'DR-HSH004S', 'DR-HTF011S', 'DR-HAP009S', 'DR-HHM005S'] as $model) {
+foreach (['DR-HSH040S', 'DR-HSH004S', 'DR-HTF004S', 'DR-HTF011S', 'DR-HAP009S', 'DR-HHM005S'] as $model) {
     $module = new ModelFixtureModule($model);
     test($module->fixture->sent === [] && !$module->values['StateValid'], $model . ' setup sends no command');
     test($module->Refresh() && $module->values['StateValid'], $model . ' production discovery/state integration');
@@ -179,4 +186,4 @@ test(!in_array(true, $module->actions, true), 'deactivation disables every new c
 $client = new Client('EU', 'fixture', static fn() => [200, json_encode(['code' => 0, 'data' => $records])], 22, 'auto', 'openapi');
 test(count($client->discover()) === 1, 'experimental OpenAPI remains restricted to its implemented 720S adapter');
 
-echo 'PASS models: ' . $checks . ' checks (39 explicit profiles; synthetic protocol/module integration; no new hardware claims).' . PHP_EOL;
+echo 'PASS models: ' . $checks . ' checks (40 explicit profiles; synthetic protocol/module integration; no new hardware claims).' . PHP_EOL;
