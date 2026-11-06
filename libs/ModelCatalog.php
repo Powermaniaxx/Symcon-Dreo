@@ -6,9 +6,10 @@ namespace SymconDreo;
 /** Explicit App-API profiles, based on the pinned sources in docs/PROVENANCE.md. */
 final class ModelCatalog
 {
-    public const CONTROLS = ['Power', 'Mode', 'HeatLevel', 'TargetTemperature', 'FanSpeed', 'Oscillation', 'TargetHumidity', 'MistLevel'];
+    public const CONTROLS = ['Power', 'Mode', 'HeatLevel', 'TargetTemperature', 'FanSpeed', 'Oscillation', 'OscillationMode', 'TargetHumidity', 'MistLevel'];
     public const OPTIONAL = ['Mode', 'HeatLevel', 'TargetTemperature', 'CurrentTemperature', 'Heating', 'HeatingKnown',
-        'FanSpeed', 'Oscillation', 'CurrentHumidity', 'TargetHumidity', 'MistLevel'];
+        'FanSpeed', 'Oscillation', 'OscillationMode', 'CurrentHumidity', 'TargetHumidity', 'MistLevel'];
+    public const OSCILLATION_MODES = ['Aus', 'Horizontal', 'Vertikal', 'Horizontal und vertikal'];
 
     public static function all(): array
     {
@@ -19,11 +20,11 @@ final class ModelCatalog
         }
         foreach (['DR-HTF004S' => 12, 'DR-HTF007S' => 4, 'DR-HTF011S' => 9, 'DR-HTF018S' => 9, 'DR-HTF017S' => 4,
             'DR-HTF024S' => 9, 'DR-HTF021S' => 12, 'DR-HTF021AS' => 12, 'DR-HTF518S' => 9,
-            'DR-HAF001S' => 4, 'DR-HAF008S' => 9, 'DR-HPF004S' => 9, 'DR-HPF005S' => 10,
+            'DR-HAF001S' => 4, 'DR-HAF008S' => 9, 'DR-HPF002S' => 8, 'DR-HPF004S' => 9, 'DR-HPF005S' => 10,
             'DR-HPF007S' => 10, 'DR-HPF008S' => 9, 'DR-HPF020S' => 9, 'DR-HPF022S' => 9] as $model => $max) {
             $modes = [1 => 'Normal', 2 => 'Natur', 3 => 'Schlafen', 4 => 'Auto'];
             if (str_starts_with($model, 'DR-HPF') || $model === 'DR-HAF008S') { $modes[5] = 'Turbo'; }
-            if (in_array($model, ['DR-HPF004S', 'DR-HPF005S', 'DR-HPF007S', 'DR-HPF020S'], true)) { $modes[6] = 'Benutzerdefiniert'; }
+            if (in_array($model, ['DR-HPF002S', 'DR-HPF004S', 'DR-HPF005S', 'DR-HPF007S', 'DR-HPF020S'], true)) { $modes[6] = 'Benutzerdefiniert'; }
             $models[$model] = ['type' => 'fan', 'maxSpeed' => $max, 'modes' => $modes];
         }
         foreach (['DR-HAP006S', 'DR-HAP007S', 'DR-HAP008S', 'DR-HAP009S', 'DR-HAP010S'] as $model) {
@@ -62,9 +63,9 @@ final class ModelCatalog
                 $fields[$ident] = ['key' => $key, 'kind' => 'int', 'min' => $min, 'max' => $max, 'value' => (int) $value];
             }
         };
-        $enum = static function (string $key, array $values, array $labels) use (&$fields, $state): void {
+        $enum = static function (string $key, array $values, array $labels, string $ident = 'Mode') use (&$fields, $state): void {
             $index = array_search($state[$key] ?? null, $values, true);
-            if ($index !== false) { $fields['Mode'] = ['key' => $key, 'kind' => 'enum', 'values' => $values, 'labels' => $labels, 'value' => $index]; }
+            if ($index !== false) { $fields[$ident] = ['key' => $key, 'kind' => 'enum', 'values' => $values, 'labels' => $labels, 'value' => $index]; }
         };
         $powerKey = 'poweron';
         if (in_array($type, ['fan', 'purifier'], true) && !array_key_exists($powerKey, $state)) { $powerKey = 'fanon'; }
@@ -108,9 +109,14 @@ final class ModelCatalog
             }
             $numeric('FanSpeed', 'windlevel', 1, $max);
             $modes = $profile['modes'];
-            $enum(array_key_exists('windtype', $state) ? 'windtype' : 'mode', array_values(array_keys($modes)), array_values($modes));
-            foreach (['hoscon', 'shakehorizon', 'oscon'] as $key) {
-                if (self::boolean($state[$key] ?? null)) { $bool('Oscillation', $key); break; }
+            if ($model === 'DR-HPF002S') {
+                $enum('mode', array_keys($modes), array_values($modes));
+                $enum('oscmode', array_keys(self::OSCILLATION_MODES), self::OSCILLATION_MODES, 'OscillationMode');
+            } else {
+                $enum(array_key_exists('windtype', $state) ? 'windtype' : 'mode', array_keys($modes), array_values($modes));
+                foreach (['hoscon', 'shakehorizon', 'oscon'] as $key) {
+                    if (self::boolean($state[$key] ?? null)) { $bool('Oscillation', $key); break; }
+                }
             }
         } elseif ($type === 'purifier') {
             $numeric('FanSpeed', 'windlevel', 1, $profile['maxSpeed']);
@@ -152,7 +158,7 @@ final class ModelCatalog
                 if (!is_bool($value)) { throw new \InvalidArgumentException('Ein/Aus benötigt einen booleschen Wert.'); }
                 return [$field['key'] => $value];
             case 'enum':
-                if (!is_int($value) || !array_key_exists($value, $field['values'])) { throw new \InvalidArgumentException('Ungültige Betriebsart für dieses Modell.'); }
+                if (!is_int($value) || !array_key_exists($value, $field['values'])) { throw new \InvalidArgumentException('Ungültige Auswahl für dieses Modell.'); }
                 return [$field['key'] => $field['values'][$value]];
             case 'int':
             case 'temperature':

@@ -20,6 +20,7 @@ Die Entwicklungsumgebung verwendet keine echten Dreo-Zugangsdaten oder Geräte. 
 | Reales Statuslesen über App-API | StateValid=true, aktuelle erfolgreiche Abfrage | Bestätigt mit beta.6 am 30.10.2026 |
 | EU-Anmeldung und Suche über OpenAPI | Eigenes Gerät in Auswahl | Nicht bestanden: HTTP 302 im Login unter beta.6 |
 | Andere Geräte im selben Konto | Werden als nicht unterstützt nicht angeboten | Offen |
+| PolyFan 502S / DR-HPF002S mit App-API | Gerät erscheint in der Liste. Ein/Aus, Stufen 1–8, alle sechs Betriebsarten und vier Schwenkeinstellungen stimmen mit Gerät und App überein. | Gerätetest in Symcon offen |
 | Pilot Max S / DR-HTF004S mit App-API | Gerät erscheint in Liste; 12 Stufen, Modi Normal/Natur/Schlafen/Auto und Schwenken werden nach tatsächlicher Statusmeldung angezeigt und am Gerät bestätigt | Offen; Profil und simulierte Tests in 1.1.2 hinzugefügt |
 | Nordamerika und Regionskorrektur aus OpenAPI-Token | Anmeldung und Gerätezugriff auf korrekter Region | Offen |
 | Kalter Start mit ausgeschaltetem Gerät | Gerät bleibt ausgeschaltet, keine Schaltbefehle | Offen |

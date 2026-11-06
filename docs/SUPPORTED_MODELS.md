@@ -1,6 +1,6 @@
-# Unterstützte Modellprofile – 1.1.2
+# Unterstützte Modellprofile – 1.1.3
 
-40 explizite App-API-Profile. Die bloße Verfügbarkeit in der Dreo-App reicht nicht aus. Zusätzliche Modelle werden erst nach Prüfung ihrer Protokollzuordnung ergänzt; es gibt keine Freigabe nach bloßem Modellpräfix.
+41 explizite App-API-Profile. Die bloße Verfügbarkeit in der Dreo-App reicht nicht aus. Zusätzliche Modelle werden erst nach Prüfung ihrer Protokollzuordnung ergänzt; es gibt keine Freigabe nach bloßem Modellpräfix.
 
 **Reale Bestätigung:** Bisher nur grundlegende EU-Anmeldung, Gerätesuche, Statuslesen und Ein/Aus des DR-HSH040S. Alle anderen Zeilen bedeuten „implementiert und mit synthetischen Daten geprüft“, nicht „am echten Gerät bestätigt“. Die verfügbaren Funktionen hängen zusätzlich von den gültigen Statusfeldern ab.
 
@@ -30,6 +30,7 @@
 | DR-HTF518S | Ventilator | Lüfterstufen 1–9 |
 | DR-HAF001S | Ventilator | Lüfterstufen 1–4 |
 | DR-HAF008S | Ventilator | Lüfterstufen 1–9 |
+| DR-HPF002S | Standventilator (PolyFan 502S) | 8 Stufen, Normal/Natur/Schlafen/Auto/Turbo/Benutzerdefiniert, horizontales und vertikales Schwenken einzeln oder kombiniert; Winkelwahl und Gerätestest in Symcon offen |
 | DR-HPF004S | Ventilator | Lüfterstufen 1–9 |
 | DR-HPF005S | Ventilator | Lüfterstufen 1–10 |
 | DR-HPF007S | Ventilator | Lüfterstufen 1–10 |

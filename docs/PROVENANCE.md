@@ -57,3 +57,7 @@ Wesentliche Abweichungen von einer pauschalen Übernahme: nur explizite Modelle;
 ## DR-HTF004S ab 1.1.2
 
 Der Dreo Pilot Max S (DR-HTF004S) ist in der Community-Integration [hass-dreo](https://github.com/JeffSteinbok/hass-dreo/blob/main/SUPPORTED_MODELS.md) als bereits getesteter Turmventilator gelistet. Die [Geräteanleitung](https://manuals.plus/m/11672967c33cdabb2a3c7d896291f7a3014ca0b864e194f4ccd0cff12e8a4f7b) belegt 12 Stufen, die vier Modi Normal/Natur/Schlafen/Auto und das Schwenken. Eine Bestätigung der API-Rohfelder am betreffenden Symcon-Gerät liegt noch nicht vor. Deshalb verwendet das Profil die bereits implementierte DR-HTF-Gerätefamilie und bietet nur Felder an, die der Cloud-Status gültig liefert. Die Modellfreigabe erfolgt ausschließlich für die exakte Kennung DR-HTF004S, nicht pauschal nach Präfix.
+
+## DR-HPF002S ab 1.1.3
+
+Die [Geräteanleitung](https://fcc.report/FCC-ID/2A3SYHPF002S/7159274.pdf) belegt die acht Stufen, sechs Betriebsarten und zwei Schwenkachsen. Die Zuordnung von `mode` und `oscmode` sowie der Bereich von `windlevel` sind in [dreo-cloud](https://github.com/mehrwiedu/dreo-cloud/tree/6c6e82a762de379785893377d4059d1ab0dfca3c) und [ioBroker.dreo-cloud](https://github.com/mehrwiedu/ioBroker.dreo-cloud/blob/2b67e61390085fbf2e27c4c276cb9c705a907e47/src/lib/fan-mode.ts) dokumentiert. Symcon schreibt jeweils nur den gewählten Statuswert. Die Winkelwahl je Achse ist in diesem Profil nicht enthalten.

@@ -1,6 +1,6 @@
 # Dreo Modul – Modulhandbuch
 
-Version 1.1.2 verbindet die Geräte aus der [Modellliste](../docs/SUPPORTED_MODELS.md) über das eigene Dreo-Konto mit Symcon ab Version 9.0. Standard ist **App-API**. Pro Gerät eine eigene Instanz anlegen. Keine lokale LAN-Steuerung. Reale Bestätigung liegt bisher nur für die grundlegende App-API-Anbindung des EU-720S vor; zusätzliche Profile sind implementiert und automatisch geprüft, aber noch nicht am echten Gerät bestätigt.
+Version 1.1.3 verbindet die Geräte aus der [Modellliste](../docs/SUPPORTED_MODELS.md) über das eigene Dreo-Konto mit Symcon ab Version 9.0. Standard ist **App-API**. Pro Gerät eine eigene Instanz anlegen. Keine lokale LAN-Steuerung. Reale Bestätigung liegt bisher nur für die grundlegende App-API-Anbindung des EU-720S vor; zusätzliche Profile sind implementiert und automatisch geprüft, aber noch nicht am echten Gerät bestätigt.
 
 Das Turmventilator-Profil **DR-HTF004S (Pilot Max S)** bietet bei gültiger Cloud-Rückmeldung Ein/Aus, 12 Stufen, vier Betriebsarten und horizontales Schwenken. Die praktische Bestätigung an einem echten DR-HTF004S mit diesem Symcon-Modul steht aus.
 
@@ -31,6 +31,7 @@ Optionale Variablen werden anhand des Profils und der gültigen Antwort ein- ode
 | Heating / HeatingKnown | Gemeldeter Heizzustand / Heizstatus tatsächlich vorhanden |
 | FanSpeed | Native Lüfterstufe, Modellgrenze beachten |
 | Oscillation | Horizontales Schwenken, wenn entsprechender boolescher Status vorhanden |
+| OscillationMode | PolyFan 502S: 0 Aus, 1 Horizontal, 2 Vertikal, 3 Horizontal und vertikal |
 | CurrentHumidity | Gemeldete Luftfeuchtigkeit in Prozent |
 | TargetHumidity | Soll-Feuchtigkeit, getrennt für Auto und Schlafen; 30–90 %, gegebenenfalls enger |
 | MistLevel | Unveränderter Gerätewert `foglevel` von 0–6; nicht alle Werte bedeuten verschiedene physische Stufen |
@@ -63,6 +64,7 @@ Alle Funktionen erwarten als ersten Parameter die ID der eigenen Dreo-Instanz. F
 | DREO_SetTargetTemperature(int InstanceID, float Value): void | Ganze °C innerhalb der Modellgrenze |
 | DREO_SetFanSpeed(int InstanceID, int Value): void | Native Lüfterstufe |
 | DREO_SetOscillation(int InstanceID, bool Value): void | Horizontales Schwenken |
+| DREO_SetOscillationMode(int InstanceID, int Value): void | Schwenkrichtung des PolyFan 502S laut Variablentabelle |
 | DREO_SetTargetHumidity(int InstanceID, int Value): void | Feuchtigkeitsziel des aktuell gemeldeten Modus |
 | DREO_SetMistLevel(int InstanceID, int Value): void | Rohwert der Nebelstufe 0–6 |
 | DREO_ResetSession(int InstanceID): void | Token und wartende Aufträge zurücksetzen |

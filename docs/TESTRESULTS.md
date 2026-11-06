@@ -1,4 +1,10 @@
-# Testprotokoll 1.1.2
+# Testprotokoll
+
+## Version 1.1.3 – 06.11.2026
+
+Unter PHP CLI 8.3.6 sind alle acht eigenständigen Testsuiten, PHP-Syntax und JSON-Parsing bestanden. Die Modelltests umfassen 285 Prüfungen mit 41 Profilen. Der PolyFan 502S wurde mit synthetischen Daten über die Gerätesuche und die Symcon-Modullogik bis zum erfassten Schaltauftrag geprüft. Abgedeckt sind Lüfterstufen, das native Betriebsartfeld, alle vier Schwenkrichtungen und die Statusbestätigung. Der Gerätetest in Symcon steht aus.
+
+## Version 1.1.2
 
 Automatisierte Nachprüfung: 02.11.2026. Lokale Laufzeit: PHP CLI 8.3.6. Die unten genannten realen Gerätebelege stammen weiterhin aus den ausdrücklich datierten früheren Tests.
 

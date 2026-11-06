@@ -19,6 +19,9 @@ function rejects(Closure $fn, string $name): void {
     test(false, $name);
 }
 function sample(string $model): array {
+    if ($model === 'DR-HPF002S') {
+        return ['poweron' => true, 'mode' => 1, 'windlevel' => 3, 'oscmode' => 0];
+    }
     return match (ModelCatalog::profile($model)['type']) {
         'heater' => ['poweron' => false, 'mode' => 'eco', 'htalevel' => 2, 'ecolevel' => 70, 'temperature' => 68, 'ptcon' => false],
         'fan' => ['poweron' => true, 'windtype' => 1, 'windlevel' => 2, 'shakehorizon' => false],
@@ -32,10 +35,10 @@ $records = [];
 foreach (ModelCatalog::all() as $model => $profile) { $records[] = ['model' => $model, 'sn' => 'fixture-' . $model]; }
 $found = Protocol::devices(['list' => $records, 'familyRooms' => [['devices' => $records]],
     'unsupported' => [['model' => 'DR-HSH016S', 'sn' => 'combo'], ['model' => 'DR-HAC006S', 'sn' => 'ac'], ['model' => 'DR-NEW999S', 'sn' => 'future']]]);
-test(count($found) === count($records) && count($found) === 40, 'mixed account discovers each allowlisted model exactly once');
+test(count($found) === count($records) && count($found) === 41, 'mixed account discovers each allowlisted model exactly once');
 test(count(Protocol::devices(['list' => [['model' => 'DR-HSH040S']]])) === 0, 'missing serial never yields a usable device');
 rejects(fn() => Protocol::devices(['list' => [['model' => 'DR-HSH040S', 'sn' => 'same'], ['model' => 'DR-HHM005S', 'sn' => 'same']]]), 'conflicting model for a serial fails closed');
-test(Protocol::discoveryStats(['list' => $records])['supportedUsable'] === 40, 'discovery statistics cover the whole catalog');
+test(Protocol::discoveryStats(['list' => $records])['supportedUsable'] === 41, 'discovery statistics cover the whole catalog');
 $split = new Client('EU', 'fixture', static function ($url): array {
     $family = str_contains($url, '/family/');
     $record = ['model' => $family ? 'DR-HSH040S' : 'DR-HTF011S', 'sn' => $family ? 'heater' : 'fan'];
@@ -71,6 +74,17 @@ rejects(fn() => ModelCatalog::command('DR-HTF004S', $pilot, [], 'FanSpeed', 13),
 test(ModelCatalog::command('DR-HTF004S', $pilot, [], 'Mode', 3) === ['windtype' => 4], 'Pilot Max S uses Auto mode 4');
 test(ModelCatalog::command('DR-HTF004S', $pilot, [], 'Oscillation', true) === ['shakehorizon' => true], 'Pilot Max S uses reported oscillation control');
 test(count(Protocol::devices(['list' => [['model' => 'DR-HTF004S', 'sn' => 'pilot-fixture']]])) === 1, 'Pilot Max S appears in device search');
+$polyFan = sample('DR-HPF002S') + ['windtype' => 99, 'hoscon' => false];
+test(ModelCatalog::command('DR-HPF002S', $polyFan, [], 'FanSpeed', 8) === ['windlevel' => 8], 'PolyFan 502S allows speed 8');
+rejects(fn() => ModelCatalog::command('DR-HPF002S', $polyFan, [], 'FanSpeed', 9), 'PolyFan 502S rejects speed above 8');
+test(ModelCatalog::command('DR-HPF002S', $polyFan, [], 'Mode', 5) === ['mode' => 6], 'PolyFan 502S uses native mode even if windtype is also present');
+foreach ([0, 1, 2, 3] as $direction) {
+    test(ModelCatalog::command('DR-HPF002S', $polyFan, [], 'OscillationMode', $direction) === ['oscmode' => $direction], 'PolyFan 502S uses native directional mode ' . $direction);
+}
+rejects(fn() => ModelCatalog::command('DR-HPF002S', $polyFan, [], 'OscillationMode', 4), 'PolyFan 502S rejects unsupported direction');
+rejects(fn() => ModelCatalog::command('DR-HPF002S', $polyFan, [], 'Oscillation', true), 'generic boolean oscillation cannot override directional mode');
+test(!isset(ModelCatalog::fields('DR-HPF002S', array_replace($polyFan, ['oscmode' => false]))['OscillationMode']), 'invalid directional state hides the control');
+test(!Protocol::matches(['oscmode' => false], ['oscmode' => 0]), 'boolean is not a confirmation of numeric direction off');
 $state = sample('DR-HTF011S');
 test(ModelCatalog::command('DR-HTF011S', $state, [], 'FanSpeed', 9) === ['windlevel' => 9], 'fan speed uses native steps');
 rejects(fn() => ModelCatalog::command('DR-HTF011S', $state, [], 'FanSpeed', 10), 'fan speed model limit');
@@ -141,7 +155,7 @@ class ModelFixtureModule extends DreoHeater {
     }
     protected function newClient(string $region, string $token): Client { return $this->fixture; }
 }
-foreach (['DR-HSH040S', 'DR-HSH004S', 'DR-HTF004S', 'DR-HTF011S', 'DR-HAP009S', 'DR-HHM005S'] as $model) {
+foreach (['DR-HSH040S', 'DR-HSH004S', 'DR-HTF004S', 'DR-HTF011S', 'DR-HPF002S', 'DR-HAP009S', 'DR-HHM005S'] as $model) {
     $module = new ModelFixtureModule($model);
     test($module->fixture->sent === [] && !$module->values['StateValid'], $model . ' setup sends no command');
     test($module->Refresh() && $module->values['StateValid'], $model . ' production discovery/state integration');
@@ -156,6 +170,12 @@ foreach (['DR-HSH040S', 'DR-HSH004S', 'DR-HTF004S', 'DR-HTF011S', 'DR-HAP009S', 
         rejects(fn() => $module->SetHeatLevel(1), $model . ' helper cannot bypass model restrictions');
     }
 }
+$module = new ModelFixtureModule('DR-HPF002S'); $module->Refresh();
+test(!$module->isHidden('OscillationMode') && $module->isHidden('Oscillation') && $module->actions['OscillationMode'], 'PolyFan 502S shows its directional selection');
+$module->SetOscillationMode(3);
+test($module->fixture->sent === [['oscmode' => 3]], 'PolyFan 502S directional selection reaches the transport');
+$module->fixture->fixtureState['oscmode'] = 3; $module->Refresh();
+test($module->values['OscillationMode'] === 3 && $module->values['LastCommand'] === 'Durch Gerätestatus bestätigt.', 'PolyFan 502S confirms direction from device state');
 $module = new ModelFixtureModule('DR-HTF011S'); $module->Refresh();
 test($module->presentations['FanSpeed']['MAX'] === 9, 'UI slider matches selected model range');
 $GLOBALS['busy'] = true; $module->SetFanSpeed(4); $module->SetFanSpeed(5); $GLOBALS['busy'] = false;
@@ -171,7 +191,7 @@ $before = count($module->fixture->sent); $module->RequestAction('RunCommandQueue
 test(count($module->fixture->sent) === $before && str_contains($module->values['LastError'], 'geändert'), 'queued humidity target cannot cross automatic/sleep mode change');
 $module = new ModelFixtureModule('DR-HSH040S'); $module->Refresh(); $powerBefore = $module->values['Power'];
 // Simulate upgrading an existing instance whose new variables do not yet exist.
-foreach (['FanSpeed', 'Oscillation', 'CurrentHumidity', 'TargetHumidity', 'MistLevel'] as $ident) { unset($module->values[$ident]); }
+foreach (['FanSpeed', 'Oscillation', 'OscillationMode', 'CurrentHumidity', 'TargetHumidity', 'MistLevel'] as $ident) { unset($module->values[$ident]); }
 $module->ApplyChanges();
 test(array_key_exists('FanSpeed', $module->values) && $module->values['Power'] === $powerBefore, 'upgrade registers extra variables while retaining existing values');
 $module->Refresh();
@@ -186,4 +206,4 @@ test(!in_array(true, $module->actions, true), 'deactivation disables every new c
 $client = new Client('EU', 'fixture', static fn() => [200, json_encode(['code' => 0, 'data' => $records])], 22, 'auto', 'openapi');
 test(count($client->discover()) === 1, 'experimental OpenAPI remains restricted to its implemented 720S adapter');
 
-echo 'PASS models: ' . $checks . ' checks (40 explicit profiles; synthetic protocol/module integration; no new hardware claims).' . PHP_EOL;
+echo 'PASS models: ' . $checks . ' checks (41 explicit profiles; synthetic protocol/module integration; no new hardware claims).' . PHP_EOL;

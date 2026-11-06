@@ -1,8 +1,12 @@
 # Dreo Modul für Symcon
 
-Version **1.1.2** verbindet unterstützte Dreo-Geräte direkt über die Dreo-Cloud mit **Symcon ab Version 9.0**. Enthalten sind **40 konkrete Modellprofile** für Heizgeräte, Ventilatoren, Luftreiniger und Luftbefeuchter. Benötigt werden ein eigenes Dreo-Konto, ein bereits in der Dreo-App eingerichtetes Gerät und Internetzugang. Home Assistant, MQTT und weitere Dienste sind nicht erforderlich.
+Version **1.1.3** verbindet unterstützte Dreo-Geräte direkt über die Dreo-Cloud mit **Symcon ab Version 9.0**. Enthalten sind **41 konkrete Modellprofile** für Heizgeräte, Ventilatoren, Luftreiniger und Luftbefeuchter. Benötigt werden ein eigenes Dreo-Konto, ein bereits in der Dreo-App eingerichtetes Gerät und Internetzugang. Home Assistant, MQTT und weitere Dienste sind nicht erforderlich.
 
 **Die Nutzung in der Dreo-App allein garantiert keine Unterstützung.** Maßgeblich ist die [Modellliste](docs/SUPPORTED_MODELS.md). Bisher sind EU-Anmeldung, Erkennung, Statuslesen und grundlegendes Ein/Aus am echten **720S / DR-HSH040S** bestätigt. Die zusätzlichen Profile sind anhand der Protokollreferenz implementiert und mit synthetischen Daten geprüft; reale Tests dieser Modelle stehen aus. Dies ist ein unabhängiges Community-Modul und kein offizielles Dreo-Produkt.
+
+## Änderungen in Version 1.1.3
+
+Neu ist der **Dreo PolyFan 502S (DR-HPF002S)** über die App-API. Das Profil bietet Ein/Aus, acht Lüfterstufen, sechs Betriebsarten und die Schwenkauswahl Aus, Horizontal, Vertikal oder beide Richtungen. Die Bedienelemente erscheinen bei passendem Gerätestatus. Der Gerätetest in Symcon steht aus.
 
 ## Änderungen in Version 1.1.2
 
@@ -17,7 +21,7 @@ Fehlerbehebung: Die Instanz verwendet beim Warten auf die Geräteauswahl oder di
 | Geräteart | Modellabhängige Funktionen |
 | --- | --- |
 | Heizgeräte | Ein/Aus, Lüften/Heizen/ECO, H1–H3, Soll- und Raumtemperatur in Celsius, Heizstatus |
-| Ventilatoren | Ein/Aus, native Lüfterstufen, Betriebsart, horizontales Schwenken |
+| Ventilatoren | Ein/Aus, native Lüfterstufen, Betriebsart, Schwenken (beim PolyFan 502S horizontal und vertikal) |
 | Luftreiniger | Ein/Aus, Lüfterstufen, Auto/Manuell/Schlafen/Turbo |
 | Luftbefeuchter | Ein/Aus, Luftfeuchtigkeit, Soll-Feuchtigkeit, Nebelstufe, bekannte Betriebsarten |
 

@@ -245,6 +245,8 @@ final class Protocol
             if (!array_key_exists($key, $actual)) { return false; }
             if (is_bool($value)) {
                 if (!in_array($actual[$key], [$value, $value ? 1 : 0], true)) { return false; }
+            } elseif (is_int($value) && !is_numeric($actual[$key])) {
+                return false;
             } elseif ($actual[$key] != $value) { return false; }
         }
         return true;

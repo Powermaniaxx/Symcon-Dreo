@@ -286,6 +286,7 @@ class DreoHeater extends IPSModuleStrict
     public function SetTargetTemperature(float $Value): void { $this->RequestAction('TargetTemperature', $Value); }
     public function SetFanSpeed(int $Value): void { $this->RequestAction('FanSpeed', $Value); }
     public function SetOscillation(bool $Value): void { $this->RequestAction('Oscillation', $Value); }
+    public function SetOscillationMode(int $Value): void { $this->RequestAction('OscillationMode', $Value); }
     public function SetTargetHumidity(int $Value): void { $this->RequestAction('TargetHumidity', $Value); }
     public function SetMistLevel(int $Value): void { $this->RequestAction('MistLevel', $Value); }
 
@@ -573,6 +574,8 @@ class DreoHeater extends IPSModuleStrict
         $this->RegisterVariableInteger('FanSpeed', 'Lüfterstufe', ['PRESENTATION' => VARIABLE_PRESENTATION_SLIDER,
             'MIN' => 1, 'MAX' => 12, 'STEP_SIZE' => 1], 31);
         $this->RegisterVariableBoolean('Oscillation', 'Schwenken', ['PRESENTATION' => VARIABLE_PRESENTATION_SWITCH], 32);
+        $this->RegisterVariableInteger('OscillationMode', 'Schwenkrichtung',
+            $this->enumPresentation(ModelCatalog::OSCILLATION_MODES), 32);
         $this->RegisterVariableFloat('CurrentHumidity', 'Luftfeuchtigkeit', ['PRESENTATION' => VARIABLE_PRESENTATION_VALUE_PRESENTATION,
             'SUFFIX' => ' %', 'DIGITS' => 1], 51);
         $this->RegisterVariableInteger('TargetHumidity', 'Soll-Luftfeuchtigkeit', ['PRESENTATION' => VARIABLE_PRESENTATION_SLIDER,

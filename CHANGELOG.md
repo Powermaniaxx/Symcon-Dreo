@@ -1,5 +1,10 @@
 # Änderungen
 
+## 1.1.3 – 06.11.2026
+
+- Dreo PolyFan 502S (DR-HPF002S) über App-API ergänzt. 8 Lüfterstufen, 6 Betriebsarten und Schwenkrichtungen Aus, Horizontal, Vertikal oder beide.
+- 41 Modellprofile, Build 14. Gerätesuche und Steuerung mit Testdaten geprüft. Test am PolyFan 502S in Symcon steht aus.
+
 ## 1.1.2 – 02.11.2026
 
 - Dreo Pilot Max S / DR-HTF004S als explizites Turmventilator-Profil ergänzt. Gerätesuche bietet dieses Modell nun bei gültiger Seriennummer an.
