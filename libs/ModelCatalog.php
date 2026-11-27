@@ -98,6 +98,16 @@ final class ModelCatalog
                 }
             }
         } elseif ($type === 'fan') {
+            // The 502S reports ambient temperature. The upstream fan integration
+            // infers Fahrenheit above 50; the unit is otherwise assumed Celsius.
+            // Do not invent a temperature when the field is missing or invalid.
+            if ($model === 'DR-HPF002S' && self::number($state['temperature'] ?? null)) {
+                $rawTemperature = (float) $state['temperature'];
+                $temperature = $rawTemperature > 50 ? Protocol::celsius($rawTemperature) : $rawTemperature;
+                if ($temperature >= -40 && $temperature <= 60) {
+                    $fields['CurrentTemperature'] = ['key' => 'temperature', 'kind' => 'read', 'value' => $temperature];
+                }
+            }
             $max = $profile['maxSpeed'];
             // HTF007S has 4- and 8-speed hardware. Unknown revisions retain the safe shared range.
             if ($model === 'DR-HTF007S') {

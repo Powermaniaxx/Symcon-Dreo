@@ -75,6 +75,10 @@ test(ModelCatalog::command('DR-HTF004S', $pilot, [], 'Mode', 3) === ['windtype' 
 test(ModelCatalog::command('DR-HTF004S', $pilot, [], 'Oscillation', true) === ['shakehorizon' => true], 'Pilot Max S uses reported oscillation control');
 test(count(Protocol::devices(['list' => [['model' => 'DR-HTF004S', 'sn' => 'pilot-fixture']]])) === 1, 'Pilot Max S appears in device search');
 $polyFan = sample('DR-HPF002S') + ['windtype' => 99, 'hoscon' => false];
+test(!isset(ModelCatalog::fields('DR-HPF002S', $polyFan)['CurrentTemperature']), 'missing temperature stays unavailable');
+test(ModelCatalog::fields('DR-HPF002S', $polyFan + ['temperature' => 68])['CurrentTemperature']['value'] === 20.0, 'PolyFan Fahrenheit ambient temperature converts to Celsius');
+test(ModelCatalog::fields('DR-HPF002S', $polyFan + ['temperature' => 21])['CurrentTemperature']['value'] === 21.0, 'PolyFan Celsius ambient temperature remains Celsius');
+test(!isset(ModelCatalog::fields('DR-HPF002S', $polyFan + ['temperature' => 'invalid'])['CurrentTemperature']), 'invalid temperature stays unavailable');
 test(ModelCatalog::command('DR-HPF002S', $polyFan, [], 'FanSpeed', 8) === ['windlevel' => 8], 'PolyFan 502S allows speed 8');
 rejects(fn() => ModelCatalog::command('DR-HPF002S', $polyFan, [], 'FanSpeed', 9), 'PolyFan 502S rejects speed above 8');
 test(ModelCatalog::command('DR-HPF002S', $polyFan, [], 'Mode', 5) === ['mode' => 6], 'PolyFan 502S uses native mode even if windtype is also present');
